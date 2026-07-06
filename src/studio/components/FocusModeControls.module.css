@@ -1,0 +1,90 @@
+.controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: calc(100% - 20px);
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(15, 15, 18, 0.92);
+  border: 1px solid var(--studio-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.controlBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-elevated);
+  color: var(--studio-text);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.exitBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--studio-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.exitBtn:hover {
+  color: var(--studio-text);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.backBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.backBtn:hover {
+  color: var(--studio-text);
+  border-color: var(--studio-accent-border);
+}
+
+.inspectorBtn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-elevated);
+  color: var(--studio-text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inspectorBtn:hover {
+  border-color: var(--studio-accent-border);
+  color: var(--studio-accent-bright);
+}
+
+.inspectorBtnActive {
+  border-color: var(--studio-accent);
+  background: rgba(124, 58, 237, 0.15);
+  color: #e9d5ff;
+}

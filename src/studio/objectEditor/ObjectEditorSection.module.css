@@ -1,0 +1,243 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.blockHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.blockTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.blockSubtitle {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.catalogGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.catalogLabel {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.visualGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 3), minmax(0, 1fr));
+  gap: 10px;
+}
+
+.visualCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border: 2px solid #262626;
+  border-radius: 10px;
+  background: #141414;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.visualCard:hover {
+  border-color: #404040;
+  transform: translateY(-1px);
+}
+
+.visualCardActive {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.4), 0 8px 20px rgba(124, 58, 237, 0.12);
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.visualCardCompact .visualThumb {
+  aspect-ratio: 1;
+}
+
+.visualThumb {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.visualIcon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.visualLabel {
+  font-size: 10px;
+  font-weight: 500;
+  color: #e5e7eb;
+  line-height: 1.2;
+}
+
+.visualCardActive .visualLabel {
+  color: #fff;
+}
+
+.swatchGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 8px;
+}
+
+.colorSwatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 4px;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.colorSwatch:hover {
+  background: #1a1a1a;
+}
+
+.colorSwatchActive {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.colorSwatchDot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.colorSwatchActive .colorSwatchDot {
+  box-shadow: 0 0 0 2px #7c3aed, inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.colorSwatchLabel {
+  font-size: 9px;
+  color: #9ca3af;
+}
+
+.colorSwatchActive .colorSwatchLabel {
+  color: #fff;
+}
+
+.identityPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #111 100%);
+}
+
+.identityField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.identityLabel {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.identityInput,
+.identityTextarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #262626;
+  border-radius: 8px;
+  background: #141414;
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.identityInput:focus,
+.identityTextarea:focus {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.identityTextarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.categoryGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.categoryChip {
+  padding: 6px 10px;
+  border: 2px solid #262626;
+  border-radius: 999px;
+  background: #141414;
+  color: #d1d5db;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.categoryChipActive {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.12);
+  color: #fff;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid #262626;
+  border-radius: 10px;
+  background: #141414;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.searchInput:focus {
+  outline: none;
+}
+
+.searchInput::placeholder {
+  color: #6b7280;
+}

@@ -1,0 +1,81 @@
+.dock {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--studio-space-4);
+  padding: var(--studio-space-3) var(--studio-space-6);
+  border-top: 1px solid var(--studio-border);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dockLeft {
+  flex: 1;
+  min-width: 0;
+}
+
+.dockCenter {
+  flex: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--studio-space-3);
+  min-width: 0;
+}
+
+.dockRight {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.progressLabel {
+  font-size: var(--studio-font-meta);
+  font-weight: 600;
+  color: var(--studio-text-muted);
+  white-space: nowrap;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--studio-accent), var(--studio-accent-bright));
+  transition: width 0.3s ease;
+}
+
+.progressPct {
+  font-size: var(--studio-font-meta);
+  font-weight: 600;
+  color: var(--studio-text-muted);
+  white-space: nowrap;
+}
+
+.dock button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--studio-space-2);
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

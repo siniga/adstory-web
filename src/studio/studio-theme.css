@@ -1,0 +1,101 @@
+:root {
+  --studio-bg: #0a0a0c;
+  --studio-surface: #121216;
+  --studio-elevated: #1a1a20;
+  --studio-card: #1e1e24;
+  --studio-elevated-hover: #24242c;
+  --studio-border: rgba(255, 255, 255, 0.08);
+  --studio-border-strong: rgba(255, 255, 255, 0.14);
+  --studio-text: #f4f4f5;
+  --studio-text-muted: #a1a1aa;
+  --studio-text-dim: #71717a;
+  --studio-accent: #7c3aed;
+  --studio-accent-bright: #a78bfa;
+  --studio-accent-hover: #6d28d9;
+  --studio-accent-soft: rgba(124, 58, 237, 0.15);
+  --studio-accent-border: rgba(124, 58, 237, 0.45);
+  --studio-accent-row: rgba(91, 33, 182, 0.55);
+  --studio-accent-glow: rgba(124, 58, 237, 0.35);
+  --studio-success: #22c55e;
+  --studio-warning: #eab308;
+  --studio-info: #3b82f6;
+  --studio-error: #ef4444;
+  --studio-space-1: 4px;
+  --studio-space-2: 8px;
+  --studio-space-3: 12px;
+  --studio-space-4: 16px;
+  --studio-space-5: 20px;
+  --studio-space-6: 24px;
+  --studio-space-8: 32px;
+  --studio-inspector-w: 320px;
+  --studio-navigator-w: 260px;
+  --studio-font-display: 22px;
+  --studio-font-body: 14px;
+  --studio-font-meta: 12px;
+  --studio-font-label: 11px;
+  --studio-line-manuscript: 1.75;
+  --studio-line-screenplay: 1.6;
+  --studio-topbar-h: 40px;
+  --studio-statusbar-h: 26px;
+  --studio-sidebar-w: 220px;
+  --studio-panel-w: 228px;
+  --studio-timeline-h: 88px;
+  --studio-thumb-w: 64px;
+  --studio-thumb-h: 36px;
+  --studio-preview-scale: 1;
+  --studio-shadow-canvas: 0 12px 40px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --studio-radius-sm: 6px;
+  --studio-radius-md: 8px;
+  --studio-radius-lg: 12px;
+  --studio-radius-xl: 16px;
+  --studio-shadow-toolbar: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --studio-transition: 0.15s ease;
+  --studio-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body.studio-app {
+  margin: 0;
+  background: var(--studio-bg);
+  overflow: hidden;
+  font-family: var(--studio-font);
+  font-size: 12px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body.studio-app #root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  text-align: left;
+  border: none;
+  min-height: 100vh;
+}
+
+body.studio-app button,
+body.studio-app select,
+body.studio-app textarea {
+  font-family: inherit;
+}
+
+body.studio-app ::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+body.studio-app ::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 99px;
+}
+
+body.studio-app button:focus-visible,
+body.studio-app select:focus-visible,
+body.studio-app textarea:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--studio-accent-soft);
+}

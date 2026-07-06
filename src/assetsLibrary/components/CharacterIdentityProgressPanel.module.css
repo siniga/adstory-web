@@ -1,0 +1,136 @@
+.panel {
+  margin: 0 28px 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  background: rgba(124, 58, 237, 0.08);
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.08);
+}
+
+.panelSuccess {
+  border-color: rgba(74, 222, 128, 0.35);
+  background: rgba(20, 83, 45, 0.22);
+  box-shadow: none;
+}
+
+.panelWarning {
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(120, 53, 15, 0.22);
+  box-shadow: none;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.progressPercent {
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.progressTrack {
+  margin-top: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%);
+  transition: width 0.35s ease;
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-top: 10px;
+  border: 2px solid rgba(196, 181, 253, 0.25);
+  border-top-color: #c4b5fd;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.currentCharacter {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.currentCharacter strong {
+  color: #e9d5ff;
+}
+
+.queueNotice {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: #fde68a;
+}
+
+.retryBtn {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.08);
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.retryBtn:hover:not(:disabled) {
+  background: rgba(251, 191, 36, 0.14);
+}
+
+.retryBtn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.panelSuccess .title {
+  color: #bbf7d0;
+}
+
+.panelSuccess .subtitle {
+  color: #86efac;
+}
+
+.panelWarning .title {
+  color: #fde68a;
+}
+
+.panelWarning .subtitle {
+  color: #fcd34d;
+}

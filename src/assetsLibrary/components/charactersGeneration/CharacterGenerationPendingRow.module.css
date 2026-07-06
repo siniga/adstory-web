@@ -1,0 +1,108 @@
+.rowWrap {
+  animation: rowFadeIn 0.35s ease both;
+}
+
+@keyframes rowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 24px;
+  border-radius: 14px;
+}
+
+.rowWrap + .rowWrap .row,
+.rowWrap + :global(.rowWrap) .row {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.rowCurrent {
+  background: rgba(124, 58, 237, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(124, 58, 237, 0.45),
+    0 0 28px rgba(124, 58, 237, 0.12);
+  animation: rowPulse 2s ease-in-out infinite;
+}
+
+@keyframes rowPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(124, 58, 237, 0.45),
+      0 0 20px rgba(124, 58, 237, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(124, 58, 237, 0.65),
+      0 0 32px rgba(124, 58, 237, 0.2);
+  }
+}
+
+.characterCell {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background: linear-gradient(145deg, #4a1942 0%, #7c3aed 55%, #a78bfa 100%);
+}
+
+.avatarSpinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.characterMeta {
+  min-width: 0;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #c4b5fd;
+}
+
+.statusCell {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .statusCell {
+    justify-content: flex-start;
+  }
+}

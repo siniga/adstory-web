@@ -1,0 +1,105 @@
+.rowWrap {
+  animation: rowFadeIn 0.45s ease both;
+}
+
+@keyframes rowFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 24px;
+  border-radius: 14px;
+  transition: background 0.25s ease;
+}
+
+.rowWrap + .rowWrap .row {
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.characterCell {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.characterMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.role {
+  font-size: 14px;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ethnicity {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.statusCell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.rowCompleted {
+  animation: completedFlash 0.6s ease;
+}
+
+@keyframes completedFlash {
+  0% {
+    background: rgba(34, 197, 94, 0.08);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+@media (max-width: 768px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .statusCell {
+    justify-content: flex-start;
+  }
+}

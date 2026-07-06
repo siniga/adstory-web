@@ -1,0 +1,79 @@
+.panel {
+  padding: 10px;
+  border: 1px solid #7c3aed;
+  border-radius: 6px;
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #a78bfa;
+}
+
+.meta {
+  margin: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.label {
+  margin: 0;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.value {
+  margin: 0;
+  color: #fff;
+  font-weight: 500;
+}
+
+.usedIn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #333;
+}
+
+.usedLabel {
+  font-size: 9px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.usedValue {
+  font-size: 10px;
+  color: #d1d5db;
+  line-height: 1.45;
+}
+
+.editBtn {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #7c3aed;
+  border-radius: 5px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.editBtn:hover {
+  background: #6d28d9;
+}

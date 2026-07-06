@@ -1,0 +1,16 @@
+.statusDot {
+  vertical-align: middle;
+}
+
+.imageStatusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.imageStatusLabel {
+  font-size: 10px;
+  color: var(--studio-text-dim);
+}

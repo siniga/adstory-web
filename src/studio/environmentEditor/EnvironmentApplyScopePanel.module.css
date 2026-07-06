@@ -1,0 +1,74 @@
+.panel {
+  padding: 14px 16px;
+  border-top: 1px solid #262626;
+  background: linear-gradient(180deg, #141414 0%, #0f0f0f 100%);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scopeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px;
+  border: 2px solid #262626;
+  border-radius: 10px;
+  background: #1a1a1a;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+
+.scopeCard:hover {
+  border-color: #404040;
+  transform: translateY(-1px);
+}
+
+.scopeCardActive {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.12);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.35);
+}
+
+.scopeIcon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.scopeLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.scopeDetail {
+  font-size: 9px;
+  color: #6b7280;
+  line-height: 1.2;
+}
+
+.scopeCardActive .scopeDetail {
+  color: #9ca3af;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

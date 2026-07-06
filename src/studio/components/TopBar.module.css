@@ -1,0 +1,249 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  height: var(--studio-topbar-h);
+  padding: 0 10px;
+  background: var(--studio-surface);
+  border-bottom: 1px solid var(--studio-border);
+  flex-shrink: 0;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+
+.backBtn:hover {
+  border-color: var(--studio-accent-border);
+  color: var(--studio-text);
+}
+
+.brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--studio-text);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.brandDot {
+  color: var(--studio-accent);
+}
+
+.divider {
+  width: 1px;
+  height: 18px;
+  background: var(--studio-border);
+}
+
+.project {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.projectLabel {
+  font-size: 9px;
+  color: var(--studio-text-dim);
+  line-height: 1.1;
+}
+
+.projectBtn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--studio-text);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.projectBtn svg {
+  width: 9px;
+  height: 9px;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.stepGroup {
+  display: flex;
+  align-items: center;
+}
+
+.stepConnector {
+  width: 8px;
+  height: 1px;
+  background: var(--studio-border);
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.stepDone,
+.stepActive {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.stepCircleDone {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--studio-success);
+  color: #fff;
+}
+
+.stepCircleDone svg {
+  width: 8px;
+  height: 8px;
+}
+
+.stepLabel {
+  font-size: 9px;
+  color: var(--studio-text-muted);
+}
+
+.stepCircleActive {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--studio-accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.stepLabelActive {
+  font-size: 9px;
+  color: var(--studio-text);
+  font-weight: 600;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--studio-text-muted);
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--studio-elevated);
+  color: var(--studio-text);
+}
+
+.iconBtn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.helpBtn {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 1px 0 2px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--studio-text-muted);
+  cursor: pointer;
+}
+
+.helpBtn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 26px;
+  padding: 0 9px;
+  border: none;
+  border-radius: 5px;
+  background: var(--studio-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.exportBtn svg {
+  width: 9px;
+  height: 9px;
+}
+
+.fullscreenBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px;
+  margin-right: 2px;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.fullscreenBtn:hover {
+  border-color: var(--studio-accent-border);
+  color: var(--studio-text);
+}
+
+.fullscreenBtn svg {
+  width: 12px;
+  height: 12px;
+}

@@ -1,0 +1,63 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 32px 20px;
+  border-top: 1px solid var(--studio-border);
+  background: rgba(10, 10, 10, 0.92);
+  flex-shrink: 0;
+}
+
+.backBtn {
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f8fafc;
+}
+
+.continueBtn {
+  height: 42px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(124, 58, 237, 0.35);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: not-allowed;
+  font-family: inherit;
+}
+
+.continueBtnActive {
+  background: linear-gradient(135deg, #9333ea, #7c3aed);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 28px rgba(124, 58, 237, 0.35);
+}
+
+.continueBtnActive:hover:not(:disabled) {
+  opacity: 0.94;
+}
+
+.continueBtn:disabled {
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .footer {
+    padding: 14px 16px 18px;
+  }
+}

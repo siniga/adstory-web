@@ -1,0 +1,124 @@
+.stepper {
+  flex-shrink: 0;
+  padding: 0 var(--studio-space-6);
+  background: rgba(0, 0, 0, 0.25);
+  border-bottom: 1px solid var(--studio-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.stepper::-webkit-scrollbar {
+  display: none;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: min-content;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.stepBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    background var(--studio-transition),
+    border-color var(--studio-transition),
+    color var(--studio-transition);
+}
+
+button.stepBtn:hover:not(.stepActive) {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.stepActive {
+  background: var(--studio-accent-soft);
+  border-color: var(--studio-accent-border);
+}
+
+.stepDone .stepLabel {
+  color: var(--studio-text-muted);
+}
+
+.stepLocked {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.indicator {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--studio-text-dim);
+  background: var(--studio-elevated);
+  border: 1px solid var(--studio-border);
+  flex-shrink: 0;
+}
+
+.indicatorActive {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+  color: #fff;
+  box-shadow: 0 0 10px var(--studio-accent-glow);
+}
+
+.indicatorDone {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+}
+
+.stepLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--studio-text-dim);
+  white-space: nowrap;
+}
+
+.stepActive .stepLabel {
+  color: var(--studio-text);
+  font-weight: 600;
+}
+
+.connector {
+  width: 20px;
+  height: 1px;
+  margin: 0 2px;
+  background: var(--studio-border-strong);
+  flex-shrink: 0;
+}
+
+.connectorDone {
+  background: rgba(34, 197, 94, 0.35);
+}
+
+@media (max-width: 768px) {
+  .stepLabel {
+    display: none;
+  }
+
+  .stepActive .stepLabel {
+    display: inline;
+  }
+}

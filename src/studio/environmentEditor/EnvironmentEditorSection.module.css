@@ -1,0 +1,118 @@
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.blockHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.blockTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.blockSubtitle {
+  margin: 0;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.visualGrid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 3), minmax(0, 1fr));
+  gap: 10px;
+}
+
+.visualCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px;
+  border: 2px solid #262626;
+  border-radius: 10px;
+  background: #141414;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.visualCard:hover {
+  border-color: #404040;
+  transform: translateY(-1px);
+}
+
+.visualCardActive {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.4), 0 8px 20px rgba(124, 58, 237, 0.12);
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.visualCardCompact .visualThumb {
+  aspect-ratio: 1;
+}
+
+.visualThumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+.visualIcon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.visualLabel {
+  font-size: 10px;
+  font-weight: 500;
+  color: #e5e7eb;
+  line-height: 1.2;
+}
+
+.visualCardActive .visualLabel,
+.paletteCardActive .visualLabel {
+  color: #fff;
+}
+
+.paletteCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border: 2px solid #262626;
+  border-radius: 10px;
+  background: #141414;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.paletteCard:hover {
+  border-color: #404040;
+  transform: translateY(-1px);
+}
+
+.paletteCardActive {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.4);
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.paletteStrip {
+  display: block;
+  width: 100%;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}

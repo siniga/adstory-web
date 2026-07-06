@@ -1,0 +1,133 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--studio-bg, #050505);
+  color: var(--studio-text, #fff);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--studio-border, #262626);
+  background: rgba(10, 10, 10, 0.96);
+  flex-shrink: 0;
+}
+
+.topBarMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.backBtn {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--studio-text-muted, #9ca3af);
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.titleBlock {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--studio-text-dim, #6b7280);
+}
+
+.title {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--studio-text-dim, #6b7280);
+}
+
+.topBarActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.secondaryBtn,
+.continueBtn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.secondaryBtn {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--studio-text-muted, #9ca3af);
+}
+
+.secondaryBtn:hover:not(:disabled) {
+  color: var(--studio-text, #fff);
+}
+
+.continueBtn {
+  border: none;
+  background: var(--studio-accent, #7c3aed);
+  color: #fff;
+}
+
+.continueBtn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.secondaryBtn:disabled,
+.continueBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bannerError {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.08);
+  border-bottom: 1px solid rgba(248, 113, 113, 0.15);
+  flex-shrink: 0;
+}
+
+@media (max-width: 1100px) {
+  .topBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topBarActions {
+    justify-content: flex-start;
+  }
+}

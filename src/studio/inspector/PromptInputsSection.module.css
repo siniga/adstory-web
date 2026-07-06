@@ -1,0 +1,82 @@
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inputLabel {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.inputValue {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: #d1d5db;
+}
+
+.inputList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.inputListItem {
+  font-size: 10px;
+  line-height: 1.4;
+  color: #d1d5db;
+}
+
+.actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.actionBtn {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: 5px;
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.actionBtn:hover:not(:disabled) {
+  color: var(--studio-text);
+  border-color: var(--studio-border-strong);
+}
+
+.actionBtnPrimary {
+  border-color: rgba(124, 58, 237, 0.45);
+  background: rgba(124, 58, 237, 0.15);
+  color: #e9d5ff;
+}
+
+.actionBtnPrimary:hover:not(:disabled) {
+  background: rgba(124, 58, 237, 0.28);
+  border-color: #7c3aed;
+  color: #fff;
+}
+
+.actionBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 0;
+  font-size: 10px;
+  color: #f87171;
+}

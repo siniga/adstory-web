@@ -1,0 +1,67 @@
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.dotLarge {
+  width: 7px;
+  height: 7px;
+}
+
+.pending,
+.reviewDraft {
+  background: #6b7280;
+}
+
+.generating {
+  background: #a78bfa;
+}
+
+.done,
+.reviewApproved {
+  background: #22c55e;
+}
+
+.failed,
+.reviewNeedsWork {
+  background: #ef4444;
+}
+
+.notGenerated {
+  background: #4b5563;
+}
+
+.someFailed {
+  background: #f97316;
+}
+
+.complete {
+  background: #22c55e;
+}
+
+.pulse {
+  animation: statusPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+.dotGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}

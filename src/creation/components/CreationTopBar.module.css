@@ -1,0 +1,162 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 54px;
+  padding: 0 20px;
+  background: var(--studio-surface);
+  border-bottom: 1px solid var(--studio-border);
+  flex-shrink: 0;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.logoMark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--studio-accent-bright), #7c3aed);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 2px 10px var(--studio-accent-glow);
+}
+
+.brandName {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--studio-text);
+  letter-spacing: -0.02em;
+}
+
+.divider {
+  width: 1px;
+  height: 22px;
+  background: var(--studio-border-strong);
+}
+
+.projectName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--studio-text-muted);
+  white-space: nowrap;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.steps::-webkit-scrollbar {
+  display: none;
+}
+
+.stepGroup {
+  display: flex;
+  align-items: center;
+}
+
+.stepConnector {
+  width: 16px;
+  height: 1px;
+  background: var(--studio-border-strong);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--studio-text-dim);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: default;
+}
+
+button.step {
+  cursor: pointer;
+}
+
+button.step:hover:not(.stepActive) {
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+}
+
+.stepDone {
+  color: var(--studio-text-muted);
+}
+
+.stepActive {
+  color: var(--studio-accent-bright);
+  background: var(--studio-accent-soft);
+  border-color: var(--studio-accent-border);
+}
+
+.stepCheck {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.12);
+  color: #4ade80;
+}
+
+.activeDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--studio-accent-bright);
+  box-shadow: 0 0 8px var(--studio-accent-glow);
+}
+
+.right {
+  flex-shrink: 0;
+}
+
+.stepCounter {
+  font-size: 12px;
+  color: var(--studio-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1100px) {
+  .projectName {
+    display: none;
+  }
+
+  .divider {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .steps {
+    display: none;
+  }
+}

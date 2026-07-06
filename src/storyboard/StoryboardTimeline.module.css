@@ -1,0 +1,103 @@
+.timeline {
+  flex-shrink: 0;
+  border-top: 1px solid var(--studio-border, #262626);
+  background: rgba(10, 10, 10, 0.96);
+  padding: 8px 10px 10px;
+}
+
+.track {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.sceneGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sceneLabel {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--studio-text-dim, #6b7280);
+}
+
+.shotRow {
+  display: flex;
+  gap: 6px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 72px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  text-align: left;
+}
+
+.cardActive {
+  border-color: rgba(124, 58, 237, 0.55);
+  box-shadow: 0 0 0 1px rgba(124, 58, 237, 0.25);
+}
+
+.thumb {
+  aspect-ratio: 16 / 9;
+  border-radius: 5px 5px 0 0;
+  overflow: hidden;
+  background: #111;
+}
+
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbFallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 5px 5px;
+}
+
+.shotId {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--studio-text-muted, #9ca3af);
+}
+
+.status {
+  font-size: 8px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.status_selected {
+  color: #34d399;
+}
+
+.status_draft {
+  color: #fbbf24;
+}
+
+.status_pending {
+  color: var(--studio-text-dim, #6b7280);
+}

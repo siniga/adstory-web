@@ -1,0 +1,47 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.characterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.characterName {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--studio-text);
+}
+
+.referenceList {
+  margin: 0;
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.referenceItem {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--studio-text-muted);
+}
+
+.attachedCount {
+  margin: 2px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--studio-border);
+  font-size: 10px;
+  color: var(--studio-text-dim);
+}
+
+.empty {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--studio-text-dim);
+}

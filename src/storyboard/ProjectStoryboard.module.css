@@ -1,0 +1,907 @@
+/* Storyboard workspace — production editor layout */
+
+.page {
+  --sb-accent: #a855f7;
+  --sb-accent-soft: rgba(168, 85, 247, 0.14);
+  --sb-accent-border: rgba(168, 85, 247, 0.45);
+  --sb-bg: #0a0a0f;
+  --sb-panel: #111118;
+  --sb-card: #16161f;
+  --sb-card-hover: #1c1c28;
+  --sb-border: rgba(255, 255, 255, 0.07);
+  --sb-text: #f4f4f5;
+  --sb-muted: #a1a1aa;
+  --sb-subtle: #71717a;
+  --sb-radius: 12px;
+  --sb-spacing: 16px;
+  --sb-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--sb-bg);
+  color: var(--sb-text);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 25%) minmax(0, 50%) minmax(240px, 25%);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sceneList,
+.shotsArea,
+.inspector {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--sb-panel);
+}
+
+.sceneList {
+  border-right: 1px solid var(--sb-border);
+}
+
+.shotsArea {
+  border-right: 1px solid var(--sb-border);
+  background: var(--sb-bg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.shotsScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px var(--sb-spacing) var(--sb-spacing);
+  -webkit-overflow-scrolling: touch;
+}
+
+.shotsList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sb-spacing);
+}
+
+.inspector {
+  animation: inspectorSlideIn 0.22s ease;
+}
+
+@keyframes inspectorSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.panelHeader {
+  padding: var(--sb-spacing);
+  border-bottom: 1px solid var(--sb-border);
+  flex-shrink: 0;
+}
+
+.panelTitle {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sb-text);
+}
+
+.sceneSearch {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  background: var(--sb-card);
+  color: var(--sb-text);
+  font-size: 13px;
+}
+
+.sceneSearch:focus {
+  outline: none;
+  border-color: var(--sb-accent-border);
+  box-shadow: 0 0 0 2px var(--sb-accent-soft);
+}
+
+.sceneSearch::placeholder {
+  color: var(--sb-subtle);
+}
+
+.panelBody {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--sb-spacing);
+}
+
+.panelFooter {
+  flex-shrink: 0;
+  padding: var(--sb-spacing);
+  border-top: 1px solid var(--sb-border);
+}
+
+.sceneListItems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-spacing);
+}
+
+.sceneItem {
+  width: 100%;
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  background: var(--sb-card);
+  color: inherit;
+  text-align: left;
+  padding: 14px var(--sb-spacing);
+  cursor: pointer;
+  box-shadow: var(--sb-shadow);
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.sceneItem:hover {
+  background: var(--sb-card-hover);
+  transform: translateY(-1px);
+}
+
+.sceneItemSelected {
+  border-color: var(--sb-accent-border);
+  background: var(--sb-accent-soft);
+  box-shadow:
+    0 0 0 1px var(--sb-accent-soft),
+    var(--sb-shadow);
+}
+
+.sceneItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sceneNumber {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--sb-muted);
+}
+
+.sceneRadio {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--sb-subtle);
+  flex-shrink: 0;
+}
+
+.sceneItemSelected .sceneRadio {
+  border-color: var(--sb-accent);
+  background: var(--sb-accent);
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+}
+
+.sceneTitle {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--sb-text);
+}
+
+.sceneMeta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--sb-muted);
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.statusIdle {
+  background: rgba(161, 161, 170, 0.12);
+  color: var(--sb-muted);
+}
+
+.statusGenerating {
+  background: rgba(168, 85, 247, 0.16);
+  color: #d8b4fe;
+}
+
+.statusCompleted {
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+}
+
+.statusFailed {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fca5a5;
+}
+
+.centerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 24px var(--sb-spacing) var(--sb-spacing);
+}
+
+.sceneHero {
+  margin-bottom: 24px;
+  animation: sceneFadeIn 0.25s ease;
+}
+
+@keyframes sceneFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sceneHeroLabel {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sb-muted);
+}
+
+.sceneHeroTitle {
+  margin: 0 0 10px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.sceneImageProgressCard {
+  margin-bottom: var(--sb-spacing);
+  padding: 14px var(--sb-spacing);
+  border-radius: var(--sb-radius);
+  border: 1px solid var(--sb-border);
+  background: var(--sb-card);
+  box-shadow: var(--sb-shadow);
+}
+
+.sceneImageProgressTitle {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sb-text);
+}
+
+.sceneImageProgressCount {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--sb-muted);
+}
+
+.sceneImageProgressCurrent {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--sb-subtle);
+}
+
+.sceneImageProgressHint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--sb-muted);
+}
+
+.sceneImageProgressStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sceneImageProgressStat {
+  min-width: 0;
+}
+
+.sceneImageProgressStatLabel {
+  display: block;
+  font-size: 11px;
+  color: var(--sb-subtle);
+  margin-bottom: 2px;
+}
+
+.sceneImageProgressStatValue {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sb-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sceneImageProgressActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sceneImageComplete {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #86efac;
+}
+
+.shotImageVisible {
+  opacity: 1;
+}
+
+.shotImage {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  object-fit: cover;
+  display: block;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.shotImageState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  padding: 16px;
+  text-align: center;
+  color: var(--sb-muted);
+  font-size: 13px;
+}
+
+.shotImageSpinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(168, 85, 247, 0.2);
+  border-top-color: var(--sb-accent);
+  border-radius: 50%;
+  animation: shotSpinner 0.8s linear infinite;
+}
+
+@keyframes shotSpinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.shotImageFailed {
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sceneChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sceneChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--sb-border);
+  background: var(--sb-card);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sb-muted);
+}
+
+.shotsToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sb-spacing);
+  margin-bottom: var(--sb-spacing);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 0;
+  background: linear-gradient(to bottom, var(--sb-bg) 70%, transparent);
+}
+
+.shotsToolbarTitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sb-muted);
+}
+
+.shotsList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sb-spacing);
+}
+
+.shotsVirtualHost {
+  position: relative;
+  width: 100%;
+}
+
+.shotCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid var(--sb-border);
+  border-radius: var(--sb-radius);
+  background: var(--sb-card);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--sb-shadow);
+  transition:
+    border-color 0.18s ease,
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.shotCard:hover {
+  border-color: rgba(168, 85, 247, 0.28);
+  transform: translateY(-1px);
+}
+
+.shotCardSelected {
+  border-color: var(--sb-accent-border);
+  box-shadow:
+    0 0 0 1px var(--sb-accent-soft),
+    0 8px 32px rgba(168, 85, 247, 0.12);
+  animation: shotSelectPulse 0.35s ease;
+}
+
+@keyframes shotSelectPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.35);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px var(--sb-accent-soft),
+      0 8px 32px rgba(168, 85, 247, 0.12);
+  }
+}
+
+.shotImageWrap {
+  position: relative;
+  width: 100%;
+  flex-shrink: 0;
+  aspect-ratio: 16 / 10;
+  min-height: 120px;
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.shotStatusBadge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.shotStatusBadgeQueued {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.16);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+}
+
+.shotStatusBadgeGenerating {
+  color: #e9d5ff;
+  background: rgba(168, 85, 247, 0.18);
+  border: 1px solid rgba(168, 85, 247, 0.32);
+}
+
+.shotStatusBadgeCompleted {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+}
+
+.shotStatusBadgeFailed {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.14);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+}
+
+.shotImagePlaceholder {
+  color: var(--sb-subtle);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  padding: 12px;
+}
+
+.shotCardBody {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.shotNumber {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sb-accent);
+}
+
+.shotMenuWrap {
+  position: relative;
+}
+
+.menuBtn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--sb-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.menuBtn:hover {
+  border-color: var(--sb-accent-border);
+  color: var(--sb-text);
+}
+
+.menuDropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 148px;
+  padding: 6px;
+  border: 1px solid var(--sb-border);
+  border-radius: 10px;
+  background: #1a1a24;
+  box-shadow: var(--sb-shadow);
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sb-text);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.menuItem:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.menuItemDanger {
+  color: #fca5a5;
+}
+
+.primaryBtn {
+  height: 36px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #9333ea, #7c3aed);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.primaryBtn:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.secondaryBtn,
+.ghostBtn {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  border: 1px solid var(--sb-border);
+  background: var(--sb-card);
+  color: var(--sb-text);
+}
+
+.secondaryBtn:disabled,
+.ghostBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ghostBtn {
+  border: none;
+  background: transparent;
+  color: var(--sb-muted);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 320px;
+  padding: 40px 24px;
+  border: 1px dashed rgba(161, 161, 170, 0.2);
+  border-radius: var(--sb-radius);
+  background: var(--sb-card);
+}
+
+.emptyIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--sb-accent-soft);
+  color: #d8b4fe;
+  font-size: 26px;
+  margin-bottom: var(--sb-spacing);
+}
+
+.emptyTitle {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.emptyText {
+  margin: 0 0 20px;
+  max-width: 40ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--sb-muted);
+}
+
+.progressCard {
+  margin-bottom: var(--sb-spacing);
+  padding: var(--sb-spacing);
+  border-radius: var(--sb-radius);
+  border: 1px solid var(--sb-accent-border);
+  background: var(--sb-accent-soft);
+}
+
+.progressTitle {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.progressCurrentShot {
+  margin: 12px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--sb-muted);
+}
+
+.progressBarTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #9333ea, #c084fc);
+  transition: width 0.25s ease;
+}
+
+.progressStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  font-size: 12px;
+}
+
+.progressStatLabel {
+  display: block;
+  color: var(--sb-muted);
+  margin-bottom: 2px;
+}
+
+.progressStatValue {
+  font-weight: 700;
+}
+
+.loadingMessage,
+.errorBox {
+  padding: var(--sb-spacing);
+  font-size: 13px;
+}
+
+.errorBox {
+  margin: var(--sb-spacing);
+  border-radius: var(--sb-radius);
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+}
+
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sb-spacing);
+}
+
+.skeletonBlock {
+  border-radius: var(--sb-radius);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.skeletonScene {
+  height: 96px;
+}
+
+.skeletonShot {
+  height: 140px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.mobileTabs {
+  display: none;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--sb-border);
+  background: var(--sb-panel);
+}
+
+.mobileTab {
+  flex: 1;
+  height: 44px;
+  border: none;
+  background: transparent;
+  color: var(--sb-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mobileTabActive {
+  color: var(--sb-text);
+  box-shadow: inset 0 -2px 0 var(--sb-accent);
+}
+
+@media (max-width: 1100px) {
+  .mobileTabs {
+    display: flex;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(200px, 32%) minmax(0, 1fr);
+  }
+
+  .inspector {
+    display: none;
+  }
+
+  .workspaceInspectorOpen .inspector {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    animation: drawerSlideUp 0.24s ease;
+  }
+
+  .shotsList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .sceneList,
+  .shotsArea {
+    display: none;
+  }
+
+  .workspaceScenesOpen .sceneList,
+  .workspaceShotsOpen .shotsArea {
+    display: flex;
+  }
+
+  .workspaceInspectorOpen .inspector {
+    display: flex;
+  }
+
+  .shotsList {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes drawerSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

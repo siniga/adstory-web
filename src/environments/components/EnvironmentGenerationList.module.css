@@ -1,0 +1,30 @@
+.listSection {
+  margin-top: 8px;
+}
+
+.tableHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  padding: 0 24px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.rows {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (max-width: 768px) {
+  .tableHeader {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tableHeader span:nth-child(2) {
+    display: none;
+  }
+}

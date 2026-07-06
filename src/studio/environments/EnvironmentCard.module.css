@@ -1,0 +1,99 @@
+.card {
+  position: relative;
+  border-radius: 8px;
+  border: 1px solid #262626;
+  background: #1a1a1a;
+  overflow: hidden;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+}
+
+.image {
+  aspect-ratio: 3 / 4;
+  width: 100%;
+  background-color: #0a0a0a;
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 10px 12px;
+}
+
+.name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.type {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.mood {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(10, 10, 10, 0.88);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.card:hover .actions,
+.card:focus-within .actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  max-width: 120px;
+  padding: 6px 10px;
+  border: 1px solid #333;
+  border-radius: 5px;
+  background: #1e1e1e;
+  color: #e5e7eb;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.actionBtn:hover {
+  background: #262626;
+  border-color: #444;
+}
+
+.actionDanger {
+  color: #fca5a5;
+}
+
+.actionDanger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+}
