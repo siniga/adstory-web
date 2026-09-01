@@ -5,6 +5,7 @@ export default function ShotCardOverlay({
   hasImage = false,
   regenerating = false,
   canRegenerate = true,
+  readOnly = false,
   onFullscreen,
   onRegenerate,
 }) {
@@ -20,16 +21,18 @@ export default function ShotCardOverlay({
       >
         <IconFullscreen />
       </button>
-      <button
-        type="button"
-        className={styles.shotOverlayBtn}
-        onClick={onRegenerate}
-        disabled={!canRegenerate || regenerating}
-        aria-label={regenerating ? 'Regenerating' : 'Regenerate shot'}
-        title={regenerating ? 'Regenerating…' : 'Regenerate'}
-      >
-        <IconSparkle />
-      </button>
+      {readOnly ? null : (
+        <button
+          type="button"
+          className={styles.shotOverlayBtn}
+          onClick={onRegenerate}
+          disabled={!canRegenerate || regenerating}
+          aria-label={regenerating ? 'Regenerating' : 'Regenerate shot'}
+          title={regenerating ? 'Regenerating…' : 'Regenerate'}
+        >
+          <IconSparkle />
+        </button>
+      )}
     </div>
   )
 }

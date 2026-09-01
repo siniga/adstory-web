@@ -33,6 +33,7 @@ function BasicShotCard({
   index,
   total,
   generating = false,
+  readOnly = false,
   onFullscreen,
   onRegenerate,
 }) {
@@ -55,9 +56,10 @@ function BasicShotCard({
         <ShotCardOverlay
           hasImage={Boolean(imageUrl)}
           regenerating={generating}
-          canRegenerate={Boolean(shot.apiId)}
+          canRegenerate={!readOnly && Boolean(shot.apiId)}
+          readOnly={readOnly}
           onFullscreen={() => onFullscreen?.(shot, scene)}
-          onRegenerate={() => onRegenerate?.(shot, scene)}
+          onRegenerate={readOnly ? undefined : () => onRegenerate?.(shot, scene)}
         />
       </div>
       <div className={styles.basicShotCaption}>
@@ -76,6 +78,7 @@ export default function StoryboardBasicView({
   shotsBySceneId = {},
   loading = false,
   generatingShotId = null,
+  readOnly = false,
   onFullscreenShot,
   onRegenerateShot,
 }) {
@@ -122,6 +125,7 @@ export default function StoryboardBasicView({
                     generating={
                       shot.apiId != null && String(generatingShotId) === String(shot.apiId)
                     }
+                    readOnly={readOnly}
                     onFullscreen={onFullscreenShot}
                     onRegenerate={onRegenerateShot}
                   />

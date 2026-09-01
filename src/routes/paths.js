@@ -238,6 +238,10 @@ export function projectStoryboardPath(projectId) {
   return `/projects/${projectId}/storyboard`
 }
 
+export function publicStoryboardPath(token) {
+  return `/s/${token}`
+}
+
 export function projectEnvironmentsPath(projectId) {
   return projectStepPath(projectId, 'environments')
 }

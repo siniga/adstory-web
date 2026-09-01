@@ -23,7 +23,11 @@ function isAuthEndpoint(endpoint = '') {
 }
 
 function isLiveEndpoint(endpoint = '') {
-  return isAuthEndpoint(endpoint) || /^\/api\/projects(\/|$|\?)/.test(endpoint)
+  return (
+    isAuthEndpoint(endpoint) ||
+    /^\/api\/projects(\/|$|\?)/.test(endpoint) ||
+    /^\/api\/public(\/|$|\?)/.test(endpoint)
+  )
 }
 
 function formatError(message, status, { sanitize = true, fallbackMessage } = {}) {

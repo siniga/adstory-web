@@ -418,6 +418,17 @@ export function IconTrash() {
   )
 }
 
+export function IconShare() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <circle cx="10.5" cy="3" r="1.6" stroke="currentColor" strokeWidth="1.1" />
+      <circle cx="3.5" cy="7" r="1.6" stroke="currentColor" strokeWidth="1.1" />
+      <circle cx="10.5" cy="11" r="1.6" stroke="currentColor" strokeWidth="1.1" />
+      <path d="M4.9 6.2 9.1 3.8M4.9 7.8 9.1 10.2" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  )
+}
+
 export function IconFullscreen() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">

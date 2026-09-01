@@ -108,6 +108,7 @@
   position: relative;
 }
 
+.shareBtn,
 .editMenuBtn {
   display: inline-flex;
   align-items: center;
@@ -123,6 +124,7 @@
   cursor: pointer;
 }
 
+.shareBtn:hover,
 .editMenuBtn:hover:not(:disabled),
 .editMenuBtnOpen {
   border-color: var(--sb-accent-border);

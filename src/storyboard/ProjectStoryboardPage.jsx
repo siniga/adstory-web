@@ -13,6 +13,8 @@ import StoryboardShotEditor from './components/StoryboardShotEditor'
 import StoryboardWorkspaceSceneList from './components/StoryboardWorkspaceSceneList'
 import ShotFullscreenViewer from './components/ShotFullscreenViewer'
 import ShotRegenerateModal from './components/ShotRegenerateModal'
+import ShareStoryboardModal from './components/ShareStoryboardModal'
+import { IconShare } from '../studio/icons'
 import {
   collectShotLightboxItems,
   findLightboxIndex,
@@ -91,6 +93,7 @@ export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
   const [regenerateShot, setRegenerateShot] = useState(null)
   const [regenerateSceneLabel, setRegenerateSceneLabel] = useState('')
   const [regenerateError, setRegenerateError] = useState(null)
+  const [shareOpen, setShareOpen] = useState(false)
   const selectedSceneId = selectedScene?.apiId ?? null
   const selectedShotId = selectedShot?.id ?? selectedShot?.apiId ?? null
 
@@ -880,6 +883,7 @@ export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
 
   const handleOpenFullscreen = useCallback(
     (shot) => {
+      setRegenerateError(null)
       setFullscreenIndex(findLightboxIndex(lightboxItems, shot))
     },
     [lightboxItems]
@@ -898,9 +902,8 @@ export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
     setRegenerateError(null)
   }, [generatingShotId])
 
-  const handleRegenerateShot = useCallback(
-    async (prompt) => {
-      const target = regenerateShot
+  const runShotRegenerate = useCallback(
+    async (target, prompt) => {
       if (!projectId || !target?.apiId || generatingShotId) return
 
       setGeneratingShotId(target.apiId)
@@ -913,18 +916,30 @@ export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
         })
         const updated = applyShotImageApiResponse(target, result)
         applyUpdatedShot(target, updated)
-        setRegenerateShot(null)
+        return updated
       } catch (err) {
-        setRegenerateError(
-          formatUserFriendlyError(
-            err instanceof Error ? err.message : 'Failed to regenerate shot image'
-          ).message
-        )
+        const message = formatUserFriendlyError(
+          err instanceof Error ? err.message : 'Failed to regenerate shot image'
+        ).message
+        setRegenerateError(message)
+        throw err
       } finally {
         setGeneratingShotId(null)
       }
     },
-    [applyUpdatedShot, generatingShotId, projectId, regenerateShot]
+    [applyUpdatedShot, generatingShotId, projectId]
+  )
+
+  const handleRegenerateShot = useCallback(
+    async (prompt) => {
+      try {
+        await runShotRegenerate(regenerateShot, prompt)
+        setRegenerateShot(null)
+      } catch {
+        // Error is shown in the regenerate modal.
+      }
+    },
+    [regenerateShot, runShotRegenerate]
   )
 
   const workspaceClassName = [
@@ -996,6 +1011,14 @@ export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
             Generate scene
           </button>
         ) : null}
+        <button
+          type="button"
+          className={styles.shareBtn}
+          onClick={() => setShareOpen(true)}
+        >
+          <IconShare />
+          Share
+        </button>
         <StoryboardEditMenu projectId={projectId} />
       </div>
       <RegenerateStoryboardBanner
@@ -1117,6 +1140,20 @@ export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
         index={Math.min(fullscreenIndex ?? 0, Math.max(lightboxItems.length - 1, 0))}
         onIndexChange={setFullscreenIndex}
         onClose={() => setFullscreenIndex(null)}
+        regenerating={Boolean(
+          generatingShotId &&
+            String(lightboxItems[Math.min(fullscreenIndex ?? 0, Math.max(lightboxItems.length - 1, 0))]?.shot?.apiId) ===
+              String(generatingShotId)
+        )}
+        regenerateError={regenerateShot ? null : regenerateError}
+        onRegenerate={runShotRegenerate}
+      />
+
+      <ShareStoryboardModal
+        open={shareOpen}
+        projectId={projectId}
+        projectTitle={project?.name || 'Storyboard'}
+        onClose={() => setShareOpen(false)}
       />
 
       <ShotRegenerateModal

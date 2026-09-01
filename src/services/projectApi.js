@@ -563,6 +563,70 @@ export async function generateEnvironmentImage({
   }
 }
 
+export function publicStoryboardUrl(sharePath) {
+  if (!sharePath) return ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  return `${origin}${sharePath}`
+}
+
+export async function getProjectShare(projectId) {
+  const data = await apiRequest(`/api/projects/${projectId}/share`, {
+    fallbackMessage: 'Failed to load share link',
+    requireSuccess: true,
+  })
+
+  return {
+    enabled: Boolean(data.enabled),
+    shareToken: data.share_token ?? null,
+    sharePath: data.share_path ?? null,
+    shareUrl: publicStoryboardUrl(data.share_path),
+  }
+}
+
+export async function enableProjectShare(projectId) {
+  const data = await apiRequest(`/api/projects/${projectId}/share`, {
+    method: 'POST',
+    fallbackMessage: 'Failed to create share link',
+    requireSuccess: true,
+  })
+
+  return {
+    enabled: Boolean(data.enabled),
+    shareToken: data.share_token ?? null,
+    sharePath: data.share_path ?? null,
+    shareUrl: publicStoryboardUrl(data.share_path),
+  }
+}
+
+export async function disableProjectShare(projectId) {
+  const data = await apiRequest(`/api/projects/${projectId}/share`, {
+    method: 'DELETE',
+    fallbackMessage: 'Failed to stop sharing',
+    requireSuccess: true,
+  })
+
+  return {
+    enabled: Boolean(data.enabled),
+    shareToken: data.share_token ?? null,
+    sharePath: data.share_path ?? null,
+    shareUrl: publicStoryboardUrl(data.share_path),
+  }
+}
+
+export async function getPublicStoryboard(token) {
+  if (!token) {
+    throw new Error('This shared storyboard is no longer available.')
+  }
+
+  const data = await apiRequest(`/api/public/storyboards/${encodeURIComponent(token)}`, {
+    auth: false,
+    fallbackMessage: 'This shared storyboard is no longer available.',
+    requireSuccess: true,
+  })
+
+  return data.storyboard ?? null
+}
+
 export const generateProjectImages = studioUnavailable('Project image generation')
 export const generateSceneImages = studioUnavailable('Scene image generation')
 export const regenerateShotImage = studioUnavailable('Shot regeneration')

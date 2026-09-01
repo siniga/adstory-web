@@ -14,6 +14,7 @@ import { projectStepPath, projectStoryboardPath } from './paths'
 import ProjectLayout from './ProjectLayout'
 import { CreationRoute, StoryboardRoute, StudioRoute } from './ProjectRoutes'
 import RequireAuth from './RequireAuth'
+import PublicStoryboardPage from '../storyboard/PublicStoryboardPage'
 import styles from '../app/AppShell.module.css'
 
 function LoginRoute({ auth }) {
@@ -216,6 +217,7 @@ export default function AppRouter({ auth, projectState, creating, setCreating })
           path="/register"
           element={<RegisterRoute auth={auth} />}
         />
+        <Route path="/s/:token" element={<PublicStoryboardPage />} />
         <Route element={<RequireAuth isAuthenticated={auth.isAuthenticated} />}>
           <Route
             path="/projects"
