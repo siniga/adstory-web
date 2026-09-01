@@ -1,20 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import DebugPanel from '../../../components/DebugPanel'
 import {
   createProjectScene,
   deleteProjectScene,
-  getProjectSceneboard,
   updateProjectScene,
 } from '../../../services/adstoryApi'
 import { formatUserFriendlyError } from '../../../utils/userFriendlyErrors'
 import { useProjectStore } from '../../../project/ProjectStoreContext'
 import useSceneboardSceneGeneration from '../../hooks/useSceneboardSceneGeneration'
 import {
-  areSceneboardScenesGenerationSettled,
   findNearestSceneAfterDelete,
   mergeSceneInList,
-  mergeSceneboardSceneLists,
 } from '../../sceneboardStatus'
-import SceneboardSceneGenerationProgress from './SceneboardSceneGenerationProgress'
 import SceneDeleteModal from './SceneDeleteModal'
 import SceneEditModal from './SceneEditModal'
 import SceneInfoSidebar from './SceneInfoSidebar'
@@ -49,13 +46,15 @@ function findSceneById(scenes, sceneId) {
   )
 }
 
+const sceneboardInitialLoadAt = new Map()
+
 export default function SceneboardStep({
   projectId,
   screenplay = '',
   sceneGenerationStatus = null,
   sceneGenerationStartedAt = null,
   onBack,
-  onContinueToCharacters,
+  onContinue,
   onGenerationMetaChange,
   loading = false,
 }) {
@@ -63,16 +62,13 @@ export default function SceneboardStep({
     scenes,
     setScenes,
     loadSceneboard: loadSceneboardFromStore,
-    loadProject,
   } = useProjectStore()
 
-  console.log('Sceneboard page rendering:', scenes.length)
-
   const [selectedSceneId, setSelectedSceneId] = useState(null)
-  const [loadingSceneboard, setLoadingSceneboard] = useState(true)
-  const [initialLoadDone, setInitialLoadDone] = useState(false)
+  const [loadingSceneboard, setLoadingSceneboard] = useState(() => scenes.length === 0)
+  const [initialLoadDone, setInitialLoadDone] = useState(() => scenes.length > 0)
   const [error, setError] = useState(null)
-  const [continuing, setContinuing] = useState(false)
+  const [requestTriggered, setRequestTriggered] = useState(false)
   const [editModal, setEditModal] = useState({
     open: false,
     mode: 'edit',
@@ -85,9 +81,13 @@ export default function SceneboardStep({
   const [sceneModalError, setSceneModalError] = useState(null)
   const [sceneDeleting, setSceneDeleting] = useState(false)
   const [sceneDeleteError, setSceneDeleteError] = useState(null)
-  const scenesExistedAtLoadRef = useRef(false)
+  const scenesExistedAtLoadRef = useRef(scenes.length > 0)
   const projectIdRef = useRef(projectId)
-  const sceneboardLoadKeyRef = useRef(null)
+  const scenesRef = useRef(scenes)
+
+  useEffect(() => {
+    scenesRef.current = scenes
+  }, [scenes])
 
   const selectedScene = useMemo(
     () => (selectedSceneId ? findSceneById(scenes, selectedSceneId) : null),
@@ -97,16 +97,23 @@ export default function SceneboardStep({
   useEffect(() => {
     if (!projectId) return undefined
 
-    const loadKey = `${projectId}:sceneboard`
-    if (sceneboardLoadKeyRef.current === loadKey) {
+    const lastLoadAt = sceneboardInitialLoadAt.get(String(projectId)) ?? 0
+    // Guard against remount storms (HMR / context invalidation) that re-fire this load
+    // and starve start-generation on php artisan's single-threaded server.
+    if (Date.now() - lastLoadAt < 4000 && scenesRef.current.length === 0) {
+      setInitialLoadDone(true)
+      setLoadingSceneboard(false)
       return undefined
     }
-    sceneboardLoadKeyRef.current = loadKey
 
     let cancelled = false
+    sceneboardInitialLoadAt.set(String(projectId), Date.now())
 
     const initialize = async () => {
-      setLoadingSceneboard(true)
+      setRequestTriggered(true)
+      if (scenesRef.current.length === 0) {
+        setLoadingSceneboard(true)
+      }
       setError(null)
 
       try {
@@ -116,18 +123,17 @@ export default function SceneboardStep({
         if (loaded.length > 0) {
           scenesExistedAtLoadRef.current = true
         }
-
-        setInitialLoadDone(true)
       } catch (err) {
         if (!cancelled) {
           setError(
             formatUserFriendlyError(
-              err instanceof Error ? err.message : 'Failed to load sceneboard'
+              err instanceof Error ? err.message : 'Failed to load sequences'
             ).message
           )
         }
       } finally {
         if (!cancelled) {
+          setInitialLoadDone(true)
           setLoadingSceneboard(false)
         }
       }
@@ -138,54 +144,42 @@ export default function SceneboardStep({
     return () => {
       cancelled = true
     }
-  }, [loadSceneboardFromStore, projectId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId])
+
+  useEffect(() => {
+    if (scenes.length > 0) {
+      setInitialLoadDone(true)
+      setLoadingSceneboard(false)
+      scenesExistedAtLoadRef.current = true
+    }
+  }, [scenes.length])
 
   useEffect(() => {
     if (projectIdRef.current !== projectId) {
       projectIdRef.current = projectId
-      sceneboardLoadKeyRef.current = null
-      setInitialLoadDone(false)
-      scenesExistedAtLoadRef.current = false
+      setInitialLoadDone(scenes.length > 0)
+      scenesExistedAtLoadRef.current = scenes.length > 0
       setSelectedSceneId(null)
-      setLoadingSceneboard(true)
+      setLoadingSceneboard(scenes.length === 0)
+      setRequestTriggered(false)
     }
-  }, [projectId])
+  }, [projectId, scenes.length])
 
   const reloadSceneList = useCallback(async () => {
     if (!projectId) return []
 
     try {
-      const result = await getProjectSceneboard(projectId)
-      const freshScenes = result.scenes ?? []
-      setScenes((previous) => mergeSceneboardSceneLists(freshScenes, previous))
-      return freshScenes
+      const freshScenes = await loadSceneboardFromStore(projectId, { silent: true })
+      return freshScenes ?? []
     } catch (err) {
       const message = formatUserFriendlyError(
-        err instanceof Error ? err.message : 'Failed to reload sceneboard'
+        err instanceof Error ? err.message : 'Failed to reload sequences'
       ).message
       setError(message)
       return []
     }
-  }, [projectId, setScenes])
-
-  const reloadSceneboardAuthoritative = useCallback(async () => {
-    if (!projectId) return []
-
-    try {
-      return await loadSceneboardFromStore(projectId)
-    } catch (err) {
-      const message = formatUserFriendlyError(
-        err instanceof Error ? err.message : 'Failed to reload sceneboard'
-      ).message
-      setError(message)
-      return []
-    }
-  }, [loadSceneboardFromStore, projectId])
-
-  const loadProjectOnComplete = useCallback(
-    () => loadProject(projectId, { force: true, reason: 'scene generation complete' }),
-    [loadProject, projectId]
-  )
+  }, [projectId, loadSceneboardFromStore])
 
   useEffect(() => {
     if (!scenes.length) return
@@ -201,36 +195,14 @@ export default function SceneboardStep({
     }
   }, [scenes, selectedSceneId])
 
-  const handleSceneListFromGeneration = useCallback(
-    (nextScenes) => {
-      setScenes(nextScenes)
-    },
-    [setScenes]
-  )
-
-  const handleSceneGenerationComplete = useCallback(async (loadedScenes) => {
-    if (!loadedScenes.length) {
-      await reloadSceneboardAuthoritative()
-    }
-  }, [reloadSceneboardAuthoritative])
-
-  const {
-    sceneGenerationActive,
-    sceneGenerationFailed,
-  } = useSceneboardSceneGeneration({
+  const { sceneGenerationActive } = useSceneboardSceneGeneration({
     enabled: Boolean(projectId) && initialLoadDone,
     projectId,
     screenplay,
     initialStatus: sceneGenerationStatus,
-    initialStartedAt: sceneGenerationStartedAt,
     scenes,
-    loadProjectOnComplete,
-    reloadSceneboard: reloadSceneboardAuthoritative,
-    onScenesChange: handleSceneListFromGeneration,
-    onGenerationMetaChange,
-    onGenerationComplete: handleSceneGenerationComplete,
     onError: (formatted) => {
-      setError(formatted?.message ?? formatted ?? 'Scene generation failed')
+      setError(formatted?.message ?? formatted ?? 'Sequence generation failed')
     },
   })
 
@@ -243,18 +215,6 @@ export default function SceneboardStep({
     },
     [selectedSceneId]
   )
-
-  const handleContinue = async () => {
-    setContinuing(true)
-    setError(null)
-    try {
-      await onContinueToCharacters?.()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to continue')
-    } finally {
-      setContinuing(false)
-    }
-  }
 
   const openEditScene = useCallback((scene) => {
     setSceneModalError(null)
@@ -396,23 +356,15 @@ export default function SceneboardStep({
     scenes,
   ])
 
-  const sceneboardReady = scenes.length > 0
-  const scenesGenerationSettled = areSceneboardScenesGenerationSettled(scenes)
-  const canContinueToCharacters =
-    sceneboardReady && (!sceneGenerationActive || scenesGenerationSettled)
   const showManualAddSceneEmpty =
     initialLoadDone &&
     !loadingSceneboard &&
     !scenes.length &&
-    (!hasScreenplay || sceneGenerationFailed) &&
     !sceneGenerationActive
-  const showSceneGenerationPanel =
-    !scenesExistedAtLoadRef.current &&
-    hasScreenplay &&
-    sceneGenerationActive &&
-    !sceneGenerationFailed &&
-    scenes.length === 0
   const deleteModalHasShots = (deleteModal.scene?.shotCount ?? 0) > 0
+  const hasSceneData = scenes.length > 0
+  const showSceneboardLoading =
+    !hasSceneData && (!initialLoadDone || loadingSceneboard)
 
   return (
     <div className={styles.page}>
@@ -436,22 +388,21 @@ export default function SceneboardStep({
             </div>
           ) : null}
 
-          {!initialLoadDone || loadingSceneboard || loading ? (
+          {showSceneboardLoading ? (
             <p className={styles.loadingMessage} role="status">
-              Loading sceneboard…
+              Loading sequences…
             </p>
           ) : null}
 
-          {showSceneGenerationPanel ? <SceneboardSceneGenerationProgress /> : null}
 
           {selectedScene ? (
             <>
               <header className={styles.centerHeader}>
                 <p className={styles.sceneNumber}>
-                  Scene {selectedScene.scene_number ?? '—'}
+                  Sequence {selectedScene.scene_number ?? '—'}
                 </p>
                 <h1 className={styles.sceneTitle}>
-                  {selectedScene.title || 'Untitled scene'}
+                  {selectedScene.title || 'Untitled sequence'}
                 </h1>
                 <div className={styles.metaRow}>
                   {selectedScene.location ? (
@@ -483,21 +434,21 @@ export default function SceneboardStep({
                     className={styles.sceneActionBtn}
                     onClick={() => openEditScene(selectedScene)}
                   >
-                    Edit Scene
+                    Edit Sequence
                   </button>
                   <button
                     type="button"
                     className={styles.sceneActionBtn}
                     onClick={() => openAddScene('after', selectedScene)}
                   >
-                    Add Scene After
+                    Add Sequence After
                   </button>
                   <button
                     type="button"
                     className={`${styles.sceneActionBtn} ${styles.sceneActionBtnDanger}`}
                     onClick={() => openDeleteScene(selectedScene)}
                   >
-                    Delete Scene
+                    Delete Sequence
                   </button>
                 </div>
               </header>
@@ -508,15 +459,15 @@ export default function SceneboardStep({
             <div>
               <p className={styles.loadingMessage}>
                 {hasScreenplay
-                  ? 'Scene generation did not produce any scenes. Add a scene manually to continue.'
-                  : 'Write a screenplay first, or add a scene manually to start building your sceneboard.'}
+                  ? 'Sequence generation did not produce any sequences. Add a sequence manually to continue.'
+                  : 'Write a screenplay first, or add a sequence manually to start building your sequence board.'}
               </p>
               <button
                 type="button"
                 className={styles.primaryBtn}
                 onClick={() => openAddScene('end')}
               >
-                Add Scene
+                Add Sequence
               </button>
             </div>
           ) : null}
@@ -529,14 +480,11 @@ export default function SceneboardStep({
         <button type="button" className={`${styles.footerBtn} ${styles.footerBack}`} onClick={onBack}>
           Back to Screenplay
         </button>
-        <button
-          type="button"
-          className={`${styles.footerBtn} ${styles.footerContinue}`}
-          onClick={handleContinue}
-          disabled={!canContinueToCharacters || continuing}
-        >
-          {continuing ? 'Continuing…' : 'Continue to Characters'}
-        </button>
+        {onContinue && hasSceneData ? (
+          <button type="button" className={`${styles.footerBtn} ${styles.footerContinue}`} onClick={onContinue}>
+            Continue to characters
+          </button>
+        ) : null}
       </footer>
 
       <SceneEditModal
@@ -558,6 +506,13 @@ export default function SceneboardStep({
         error={sceneDeleteError}
         onClose={closeDeleteModal}
         onConfirm={handleConfirmDeleteScene}
+      />
+
+      <DebugPanel
+        pageName="Sequences"
+        loading={showSceneboardLoading}
+        dataCount={scenes.length}
+        requestTriggered={requestTriggered}
       />
     </div>
   )

@@ -1,7 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import * as screenlyApi from '../services/screenlyApi'
 import {
-  allCharactersGenerated,
   readCharacterGenerationStatus,
 } from './assetGenerationStatus'
 import CharacterWorkflowRow from './components/CharacterWorkflowRow'
@@ -28,14 +26,12 @@ export default function AssetsLibraryPage({
   currentStep = 'assetsLibrary',
   maxStepIndex = 0,
   onStepClick,
-  onApproveAndContinue,
   onBackToStory,
   onReplaceCharacters,
   onReplaceCharacter,
   error = null,
 }) {
   const [actionError, setActionError] = useState(null)
-  const [continuing, setContinuing] = useState(false)
   const [rowError, setRowError] = useState(null)
 
   const handleReplaceCharacters = useCallback(
@@ -59,10 +55,6 @@ export default function AssetsLibraryPage({
   })
 
   const characterCount = workflow.characters.length
-  const canContinue = allCharactersGenerated(workflow.characters, {
-    generatingIds: workflow.generatingIds,
-    isBuildingAll: workflow.isBuildingAll,
-  })
 
   const handleGenerateOne = useCallback(
     async (characterId) => {
@@ -88,23 +80,6 @@ export default function AssetsLibraryPage({
       setRowError(message)
     }
   }, [workflow])
-
-  const handleContinue = useCallback(async () => {
-    if (!canContinue || !projectId) return
-
-    setContinuing(true)
-    setActionError(null)
-
-    try {
-      await screenlyApi.acceptAllCharacters(projectId)
-      await onApproveAndContinue?.()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to continue to environments'
-      setActionError(message)
-    } finally {
-      setContinuing(false)
-    }
-  }, [canContinue, onApproveAndContinue, projectId])
 
   const displayError = actionError || error || workflow.listError || workflow.buildError || rowError
 
@@ -143,10 +118,6 @@ export default function AssetsLibraryPage({
         <AssetWorkflowFooter
           backLabel="Back"
           onBack={onBackToStory}
-          continueLabel="Continue to Environments"
-          onContinue={handleContinue}
-          continueDisabled={!canContinue}
-          continueLoading={continuing}
         />
       }
     >

@@ -1,4 +1,4 @@
-import * as screenlyApi from '../services/screenlyApi'
+import * as projectApi from '../services/projectApi'
 
 export function assetNeedsPrimaryImage(item, assetType = 'character') {
   if (!item?.id) return false
@@ -20,7 +20,7 @@ export async function generateHeroImageForCharacter(characterId) {
     throw new Error('Select a character before generating a hero image.')
   }
 
-  return screenlyApi.generateHeroImage(characterId)
+  return projectApi.generateHeroImage(characterId)
 }
 
 export async function generateCharacterReferenceForCharacter(characterId, referenceType) {
@@ -32,7 +32,7 @@ export async function generateCharacterReferenceForCharacter(characterId, refere
     throw new Error('Reference type is required.')
   }
 
-  return screenlyApi.generateCharacterReference(characterId, referenceType)
+  return projectApi.generateCharacterReference(characterId, referenceType)
 }
 
 export async function generatePrimaryImageForAsset(item, assetType = 'character') {
@@ -41,15 +41,15 @@ export async function generatePrimaryImageForAsset(item, assetType = 'character'
   }
 
   if (assetType === 'character') {
-    return screenlyApi.generateHeroImage(item.id)
+    return projectApi.generateHeroImage(item.id)
   }
 
   if (assetType === 'environment') {
-    return screenlyApi.generateEnvironmentReferenceImage(item.id)
+    return projectApi.generateEnvironmentReferenceImage(item.id)
   }
 
   if (assetType === 'object') {
-    return screenlyApi.generateObjectReferenceImage(item.id)
+    return projectApi.generateObjectReferenceImage(item.id)
   }
 
   throw new Error('Unsupported asset type.')

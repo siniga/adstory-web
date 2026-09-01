@@ -3,7 +3,7 @@ import { findShotBySelectionKey } from './shotSelection'
 
 export const PROGRESS_STEPS = [
   { id: 'story', label: 'Story', status: 'done' },
-  { id: 'script', label: 'Script', status: 'done' },
+  { id: 'screenplay', label: 'Screenplay', status: 'done' },
   { id: 'scenes', label: 'Scenes', status: 'done' },
   { id: 'shots', label: 'Shots', status: 'done' },
   { id: 'frames', label: 'Frames', status: 'done' },

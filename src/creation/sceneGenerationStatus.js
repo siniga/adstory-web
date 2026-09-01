@@ -335,7 +335,48 @@ export function shouldStopScenePolling(progress, scenes = []) {
   if (progress && isSceneGenerationTerminal(progress.status)) {
     return true
   }
-  return allScenesFinished(scenes) || allScenesCompleted(scenes)
+
+  if (allScenesFinished(scenes) || allScenesCompleted(scenes)) {
+    return true
+  }
+
+  if (!progress) {
+    return false
+  }
+
+  const status = progress.status ?? null
+  const total = progress.total ?? 0
+  const remaining = progress.remaining ?? 0
+  const queued = progress.queued ?? 0
+  const running = progress.running ?? 0
+
+  // Idle / empty progress means there is nothing left to poll.
+  if (!isSceneGenerationInProgress(status) && total <= 0 && remaining <= 0 && queued <= 0 && running <= 0) {
+    return true
+  }
+
+  return false
+}
+
+/** Idle with no scenes/tasks — stop polling, but do not treat as a finished generation. */
+export function isSceneGenerationBlank(progress, scenes = []) {
+  if (scenes.length > 0) return false
+  if (!progress) return false
+
+  const status = progress.status ?? null
+  const total = progress.total ?? 0
+  const remaining = progress.remaining ?? 0
+  const queued = progress.queued ?? 0
+  const running = progress.running ?? 0
+
+  return (
+    !isSceneGenerationInProgress(status) &&
+    !isSceneGenerationTerminal(status) &&
+    total <= 0 &&
+    remaining <= 0 &&
+    queued <= 0 &&
+    running <= 0
+  )
 }
 
 export function hasFailedScenes(scenes = []) {

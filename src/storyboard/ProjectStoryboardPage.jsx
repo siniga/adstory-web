@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { getVisualStyleLabel } from '../config/visualStyles'
+import DebugPanel from '../components/DebugPanel'
 import { useProjectStore } from '../project/ProjectStoreContext'
 import { formatUserFriendlyError } from '../utils/userFriendlyErrors'
+import StoryboardBasicView from './components/StoryboardBasicView'
+import StoryboardImageGateModal from './components/StoryboardImageGateModal'
+import StoryboardEditMenu from './components/StoryboardEditMenu'
+import RegenerateStoryboardBanner from './components/RegenerateStoryboardBanner'
 import StoryboardShotsPanel from './components/StoryboardShotsPanel'
 import StoryboardShotEditor from './components/StoryboardShotEditor'
 import StoryboardWorkspaceSceneList from './components/StoryboardWorkspaceSceneList'
+import ShotFullscreenViewer from './components/ShotFullscreenViewer'
+import ShotRegenerateModal from './components/ShotRegenerateModal'
+import {
+  collectShotLightboxItems,
+  findLightboxIndex,
+  sceneDisplayLabel,
+} from './shotLightbox'
 import useStoryboardShotGeneration from './hooks/useStoryboardShotGeneration'
 import useStoryboardSceneImageGeneration from './hooks/useStoryboardSceneImageGeneration'
 import {
@@ -19,18 +32,27 @@ import {
   draftToCreatePayload,
   draftToUpdatePayload,
 } from './shotEditorModel'
+import {
+  projectNeedsStoryboardPipeline,
+  runStoryboardGenerationPipeline,
+  consumeUnifiedPipelineStoryboardDone,
+} from './pipeline/runStoryboardGenerationPipeline'
 import styles from './ProjectStoryboard.module.css'
-import shellStyles from '../app/ScreenlyAppShell.module.css'
+import shellStyles from '../app/AppShell.module.css'
 import {
   applyShotImageApiResponse,
   createProjectScene,
   createProjectShot,
   deleteProjectShot,
   generateShotImage,
+  mapAdstoryShot,
   updateProjectShot,
 } from '../services/adstoryApi'
+import * as projectApi from '../services/projectApi'
 
-export default function ProjectStoryboardPage({ projectId }) {
+export default function ProjectStoryboardPage({ projectId, onBackToProject }) {
+  const location = useLocation()
+  const navigate = useNavigate()
   const {
     project,
     storyboardScenes,
@@ -39,10 +61,9 @@ export default function ProjectStoryboardPage({ projectId }) {
     selectedShot,
     characters,
     environments,
+    setCharacters,
     loadStoryboard,
     loadStoryboardScene,
-    loadCharacters,
-    loadEnvironments,
     setSelectedScene,
     setSelectedShot,
     setStoryboardShots,
@@ -60,15 +81,27 @@ export default function ProjectStoryboardPage({ projectId }) {
   const [shotSaveError, setShotSaveError] = useState(null)
   const [shotSaveMessage, setShotSaveMessage] = useState(null)
   const [mobilePanel, setMobilePanel] = useState('shots')
-
+  const [requestTriggered, setRequestTriggered] = useState(false)
+  const [viewMode, setViewMode] = useState('basic')
+  const [basicShotsBySceneId, setBasicShotsBySceneId] = useState({})
+  const [basicShotsLoading, setBasicShotsLoading] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [imageGateOpen, setImageGateOpen] = useState(false)
+  const [fullscreenIndex, setFullscreenIndex] = useState(null)
+  const [regenerateShot, setRegenerateShot] = useState(null)
+  const [regenerateSceneLabel, setRegenerateSceneLabel] = useState('')
+  const [regenerateError, setRegenerateError] = useState(null)
   const selectedSceneId = selectedScene?.apiId ?? null
   const selectedShotId = selectedShot?.id ?? selectedShot?.apiId ?? null
 
   const storyboardLoadKeyRef = useRef(null)
   const sceneLoadCompletedRef = useRef(null)
   const sceneLoadInFlightRef = useRef(null)
-  const assetsLoadKeyRef = useRef(null)
   const activeSceneIdRef = useRef(selectedSceneId)
+  const pipelineStartedRef = useRef(null)
+  const pipelineAbortRef = useRef(null)
+  const pendingForceRegenRef = useRef(Boolean(location.state?.regenerateStoryboard))
+  const executeStoryboardPipelineRef = useRef(null)
 
   useEffect(() => {
     activeSceneIdRef.current = selectedSceneId
@@ -78,6 +111,115 @@ export default function ProjectStoryboardPage({ projectId }) {
     () => getVisualStyleLabel(project.visualStyle) || '',
     [project.visualStyle]
   )
+  const visualStyleRef = useRef(visualStyle)
+  const loadStoryboardRef = useRef(loadStoryboard)
+  const loadStoryboardSceneRef = useRef(loadStoryboardScene)
+  const updateStoryboardSceneMetaRef = useRef(updateStoryboardSceneMeta)
+  const setSelectedSceneRef = useRef(setSelectedScene)
+  const setSelectedShotRef = useRef(setSelectedShot)
+  const setStoryboardShotsRef = useRef(setStoryboardShots)
+
+  useEffect(() => {
+    visualStyleRef.current = visualStyle
+  }, [visualStyle])
+
+  useEffect(() => {
+    loadStoryboardRef.current = loadStoryboard
+    loadStoryboardSceneRef.current = loadStoryboardScene
+    updateStoryboardSceneMetaRef.current = updateStoryboardSceneMeta
+    setSelectedSceneRef.current = setSelectedScene
+    setSelectedShotRef.current = setSelectedShot
+    setStoryboardShotsRef.current = setStoryboardShots
+  }, [
+    loadStoryboard,
+    loadStoryboardScene,
+    setSelectedScene,
+    setSelectedShot,
+    setStoryboardShots,
+    updateStoryboardSceneMeta,
+  ])
+
+  const executeStoryboardPipeline = useCallback(
+    async ({ force = false, scenes: incomingScenes } = {}) => {
+      if (!projectId) return
+
+      if (pipelineAbortRef.current) {
+        pipelineAbortRef.current.abort()
+      }
+
+      const pipelineKey = `${projectId}:storyboard-pipeline`
+      pipelineStartedRef.current = pipelineKey
+      const controller = new AbortController()
+      pipelineAbortRef.current = controller
+      if (force) setRegenerating(true)
+      setError(null)
+
+      try {
+        const scenes = incomingScenes ?? (await loadStoryboardRef.current(projectId))
+        await runStoryboardGenerationPipeline({
+          projectId,
+          scenes,
+          styleLabel: visualStyleRef.current,
+          signal: controller.signal,
+          force,
+          onPhaseChange: () => {},
+          onSceneMeta: (scene) => {
+            const id = scene?.apiId ?? scene?.id
+            if (id == null) return
+            updateStoryboardSceneMetaRef.current?.(id, {
+              shotCount: scene.shotCount ?? scene.shot_count,
+              shotGenerationStatus:
+                scene.shotGenerationStatus ?? scene.shot_generation_status,
+              title: scene.title,
+            })
+          },
+          onShots: (sceneId, shots) => {
+            const activeId = activeSceneIdRef.current
+            if (
+              activeId != null &&
+              String(activeId) === String(sceneId) &&
+              Array.isArray(shots)
+            ) {
+              setStoryboardShotsRef.current(shots)
+            }
+          },
+        })
+
+        setBasicShotsBySceneId({})
+        await loadStoryboardRef.current(projectId)
+        const activeId = activeSceneIdRef.current
+        if (activeId != null) {
+          sceneLoadCompletedRef.current = null
+          const sceneResult = await loadStoryboardSceneRef.current(projectId, activeId)
+          setStoryboardShotsRef.current(sceneResult?.shots ?? [])
+          setSelectedShotRef.current(sceneResult?.shots?.[0] ?? null)
+        }
+      } catch (err) {
+        if (err?.name === 'AbortError') return
+        const friendly = formatUserFriendlyError(
+          err instanceof Error ? err.message : 'Failed to generate storyboard'
+        )
+        setError(friendly.message)
+        pipelineStartedRef.current = null
+      } finally {
+        if (pipelineAbortRef.current === controller) {
+          pipelineAbortRef.current = null
+        }
+        if (force) setRegenerating(false)
+      }
+    },
+    [projectId]
+  )
+
+  useEffect(() => {
+    executeStoryboardPipelineRef.current = executeStoryboardPipeline
+  }, [executeStoryboardPipeline])
+
+  useEffect(() => {
+    if (!location.state?.regenerateStoryboard) return
+    pendingForceRegenRef.current = true
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, location.state?.regenerateStoryboard, navigate])
 
   useEffect(() => {
     if (!projectId) return undefined
@@ -89,14 +231,17 @@ export default function ProjectStoryboardPage({ projectId }) {
     storyboardLoadKeyRef.current = loadKey
 
     let cancelled = false
+    setRequestTriggered(true)
     setListLoading(true)
     setError(null)
 
-    loadStoryboard(projectId)
-      .then((scenes) => {
+    ;(async () => {
+      try {
+        const scenes = await loadStoryboardRef.current(projectId)
         if (cancelled) return
+
         if (scenes.length > 0) {
-          setSelectedScene((current) => {
+          setSelectedSceneRef.current((current) => {
             if (
               current?.apiId != null &&
               scenes.some((scene) => String(scene.apiId) === String(current.apiId))
@@ -106,55 +251,122 @@ export default function ProjectStoryboardPage({ projectId }) {
             return scenes[0]
           })
         }
-      })
-      .catch((err) => {
+
+        setListLoading(false)
+
+        const pipelineKey = `${projectId}:storyboard-pipeline`
+        if (pendingForceRegenRef.current) {
+          pendingForceRegenRef.current = false
+          await executeStoryboardPipelineRef.current?.({ force: true, scenes })
+          return
+        }
+
+        if (pipelineStartedRef.current === pipelineKey) return
+
+        // Unified Story→Storyboard pipeline already finished — don't open a second popup.
+        if (consumeUnifiedPipelineStoryboardDone(projectId)) {
+          pipelineStartedRef.current = pipelineKey
+          return
+        }
+
+        let needsPipeline = false
+        try {
+          needsPipeline = await projectNeedsStoryboardPipeline(projectId, scenes)
+        } catch {
+          needsPipeline = scenes.some(
+            (scene) => (scene.shotCount ?? scene.shot_count ?? 0) <= 0
+          )
+        }
+        if (!needsPipeline || cancelled) return
+
+        await executeStoryboardPipelineRef.current?.({ scenes })
+      } catch (err) {
         if (!cancelled) {
+          setListLoading(false)
           setError(
             formatUserFriendlyError(
               err instanceof Error ? err.message : 'Failed to load storyboard'
             ).message
           )
         }
-      })
+      }
+    })()
+
+    return () => {
+      // Do NOT abort the multi-scene pipeline here — Strict Mode remounts and
+      // store callback identity changes used to cancel after the first scene.
+      cancelled = true
+      if (pipelineStartedRef.current !== `${projectId}:storyboard-pipeline`) {
+        storyboardLoadKeyRef.current = null
+      }
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    if (viewMode !== 'basic' || !projectId || !storyboardScenes.length) return undefined
+
+    let cancelled = false
+    setBasicShotsLoading(true)
+
+    ;(async () => {
+      const next = {}
+      try {
+        const liveProject = await projectApi.getProject(projectId)
+        const liveShots = liveProject.shots ?? []
+        for (const scene of storyboardScenes) {
+          const sceneId = scene.apiId ?? scene.id
+          if (sceneId == null) continue
+          const sceneShots = liveShots
+            .filter((shot) => String(shot.scene_id) === String(sceneId))
+            .map((shot, index) =>
+              mapAdstoryShot(shot, {
+                sceneNumber: scene.scene_number,
+                indexInScene: index,
+              })
+            )
+          next[sceneId] = sceneShots
+          next[String(sceneId)] = sceneShots
+        }
+      } catch {
+        await Promise.all(
+          storyboardScenes.map(async (scene) => {
+            const sceneId = scene.apiId ?? scene.id
+            if (sceneId == null) return
+            try {
+              const result = await loadStoryboardScene(projectId, sceneId)
+              next[sceneId] = result?.shots ?? []
+              next[String(sceneId)] = result?.shots ?? []
+            } catch {
+              next[sceneId] = []
+              next[String(sceneId)] = []
+            }
+          })
+        )
+      }
+
+      if (!cancelled) {
+        setBasicShotsBySceneId(next)
+      }
+    })()
       .finally(() => {
-        if (!cancelled) setListLoading(false)
+        if (!cancelled) setBasicShotsLoading(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [loadStoryboard, projectId, setSelectedScene])
+  }, [loadStoryboardScene, projectId, storyboardScenes, viewMode])
 
   useEffect(() => {
-    if (!projectId) return undefined
+    if (viewMode !== 'basic' || selectedSceneId == null) return
+    setBasicShotsBySceneId((previous) => ({
+      ...previous,
+      [selectedSceneId]: storyboardShots,
+      [String(selectedSceneId)]: storyboardShots,
+    }))
+  }, [viewMode, selectedSceneId, storyboardShots])
 
-    const loadKey = String(projectId)
-    if (assetsLoadKeyRef.current === loadKey) {
-      return undefined
-    }
-
-    const projectMatches = String(project.projectId) === loadKey
-    const hasCharacters = projectMatches && characters.length > 0
-    const hasEnvironments = projectMatches && environments.length > 0
-
-    if (hasCharacters && hasEnvironments) {
-      assetsLoadKeyRef.current = loadKey
-      return undefined
-    }
-
-    assetsLoadKeyRef.current = loadKey
-
-    if (!hasCharacters) {
-      void loadCharacters(projectId)
-    }
-    if (!hasEnvironments) {
-      void loadEnvironments(projectId)
-    }
-
-    return undefined
-    // Load assets once per project; skip when store already has them.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId])
+  // Characters and environments are loaded via the global ProjectStore. No need to load them separately.
 
   useEffect(() => {
     if (!projectId || !selectedSceneId) return undefined
@@ -182,9 +394,7 @@ export default function ProjectStoryboardPage({ projectId }) {
         if (String(requestSceneId) !== String(activeSceneIdRef.current)) return
 
         const nextShots = result?.shots ?? []
-        setStoryboardShots((previous) =>
-          mergeSceneShotsFromLoader(previous, nextShots, requestSceneId)
-        )
+        setStoryboardShots(nextShots)
         setSelectedShot(nextShots[0] ?? null)
         sceneLoadCompletedRef.current = loadKey
       })
@@ -254,7 +464,7 @@ export default function ProjectStoryboardPage({ projectId }) {
       if (String(sceneId) !== String(activeSceneIdRef.current)) return
 
       const nextShots = result?.shots ?? []
-      setStoryboardShots((previous) => mergeSceneShotsFromLoader(previous, nextShots, sceneId))
+      setStoryboardShots(nextShots)
       setSelectedShot((previous) => {
         if (!previous) return nextShots[0] ?? null
         return (
@@ -314,19 +524,9 @@ export default function ProjectStoryboardPage({ projectId }) {
   )
 
   const {
-    progress: imageGenerationProgress,
-    starting: imageStarting,
-    resuming: imageResuming,
     generationError: imageGenerationError,
-    generationComplete: imageGenerationComplete,
-    stalled: imageGenerationStalled,
-    slowProgress: imageGenerationSlowProgress,
     imageGenerationActive,
     startGeneration: startImageGeneration,
-    resumeGeneration: resumeImageGeneration,
-    cancelGeneration: cancelImageGeneration,
-    cancelling: imageCancelling,
-    dismissSlowProgress: dismissSlowImageProgress,
   } = useStoryboardSceneImageGeneration({
     projectId,
     sceneId: selectedSceneId,
@@ -350,7 +550,6 @@ export default function ProjectStoryboardPage({ projectId }) {
     cancelling: shotCancelling,
     generationError,
     startGeneration,
-    cancelGeneration: cancelShotGeneration,
   } = useStoryboardShotGeneration({
     projectId,
     sceneId: selectedSceneId,
@@ -604,6 +803,40 @@ export default function ProjectStoryboardPage({ projectId }) {
     }
   }, [projectId, selectedScene, setSelectedShot, setStoryboardShots, storyboardShots])
 
+  const applyUpdatedShot = useCallback(
+    (target, updated) => {
+      const merged = mergeShotPreservingImages(target, updated)
+
+      setStoryboardShots((previous) =>
+        previous.map((item) =>
+          String(item.apiId ?? item.id) === String(merged.apiId ?? merged.id)
+            ? mergeShotPreservingImages(item, merged)
+            : item
+        )
+      )
+      setSelectedShot((previous) =>
+        previous && String(previous.apiId ?? previous.id) === String(merged.apiId ?? merged.id)
+          ? mergeShotPreservingImages(previous, merged)
+          : previous
+      )
+      setBasicShotsBySceneId((previous) => {
+        const next = { ...previous }
+        for (const [key, shots] of Object.entries(previous)) {
+          if (!Array.isArray(shots)) continue
+          next[key] = shots.map((item) =>
+            String(item.apiId ?? item.id) === String(merged.apiId ?? merged.id)
+              ? mergeShotPreservingImages(item, merged)
+              : item
+          )
+        }
+        return next
+      })
+
+      return merged
+    },
+    [setSelectedShot, setStoryboardShots]
+  )
+
   const handleGenerateShotImage = useCallback(
     async (shot) => {
       const target = shot ?? selectedShot
@@ -615,19 +848,7 @@ export default function ProjectStoryboardPage({ projectId }) {
       try {
         const result = await generateShotImage(projectId, target.apiId)
         const updated = applyShotImageApiResponse(target, result)
-
-        setStoryboardShots((previous) =>
-          previous.map((item) =>
-            String(item.apiId) === String(updated.apiId)
-              ? mergeShotPreservingImages(item, updated)
-              : item
-          )
-        )
-        setSelectedShot((previous) =>
-          previous && String(previous.apiId) === String(updated.apiId)
-            ? mergeShotPreservingImages(previous, updated)
-            : previous
-        )
+        applyUpdatedShot(target, updated)
       } catch (err) {
         setShotSaveError(
           formatUserFriendlyError(
@@ -638,7 +859,72 @@ export default function ProjectStoryboardPage({ projectId }) {
         setGeneratingShotId(null)
       }
     },
-    [generatingShotId, projectId, selectedShot, setSelectedShot, setStoryboardShots]
+    [
+      applyUpdatedShot,
+      generatingShotId,
+      projectId,
+      selectedShot,
+    ]
+  )
+
+  const lightboxItems = useMemo(
+    () =>
+      collectShotLightboxItems(
+        storyboardScenes,
+        basicShotsBySceneId,
+        storyboardShots,
+        selectedSceneId
+      ),
+    [basicShotsBySceneId, selectedSceneId, storyboardScenes, storyboardShots]
+  )
+
+  const handleOpenFullscreen = useCallback(
+    (shot) => {
+      setFullscreenIndex(findLightboxIndex(lightboxItems, shot))
+    },
+    [lightboxItems]
+  )
+
+  const handleOpenRegenerate = useCallback((shot, scene) => {
+    if (!shot?.apiId) return
+    setRegenerateError(null)
+    setRegenerateShot(shot)
+    setRegenerateSceneLabel(sceneDisplayLabel(scene ?? selectedScene))
+  }, [selectedScene])
+
+  const handleCloseRegenerate = useCallback(() => {
+    if (generatingShotId) return
+    setRegenerateShot(null)
+    setRegenerateError(null)
+  }, [generatingShotId])
+
+  const handleRegenerateShot = useCallback(
+    async (prompt) => {
+      const target = regenerateShot
+      if (!projectId || !target?.apiId || generatingShotId) return
+
+      setGeneratingShotId(target.apiId)
+      setRegenerateError(null)
+
+      try {
+        const result = await projectApi.generateProjectShotImage(projectId, target.apiId, {
+          force: true,
+          custom_prompt: prompt,
+        })
+        const updated = applyShotImageApiResponse(target, result)
+        applyUpdatedShot(target, updated)
+        setRegenerateShot(null)
+      } catch (err) {
+        setRegenerateError(
+          formatUserFriendlyError(
+            err instanceof Error ? err.message : 'Failed to regenerate shot image'
+          ).message
+        )
+      } finally {
+        setGeneratingShotId(null)
+      }
+    },
+    [applyUpdatedShot, generatingShotId, projectId, regenerateShot]
   )
 
   const workspaceClassName = [
@@ -650,104 +936,207 @@ export default function ProjectStoryboardPage({ projectId }) {
     .filter(Boolean)
     .join(' ')
 
+  const handleImageGateCharacter = useCallback(
+    (updated) => {
+      setCharacters((current) =>
+        current.map((item) => (String(item.id) === String(updated.id) ? { ...item, ...updated } : item))
+      )
+    },
+    [setCharacters]
+  )
+
+  const handleImageGateShot = useCallback((updated, sceneId) => {
+    setBasicShotsBySceneId((previous) => {
+      const current = previous[sceneId] ?? previous[String(sceneId)] ?? []
+      const next = current.map((item) =>
+        String(item.id ?? item.apiId) === String(updated.id ?? updated.apiId)
+          ? { ...item, ...updated }
+          : item
+      )
+      return {
+        ...previous,
+        [sceneId]: next,
+        [String(sceneId)]: next,
+      }
+    })
+  }, [])
+
   return (
     <div className={`${shellStyles.paneActive} ${styles.page}`}>
+      <div className={styles.pageBar}>
+        {onBackToProject ? (
+          <button type="button" className={styles.backToProjectBtn} onClick={onBackToProject}>
+            ← Project
+          </button>
+        ) : null}
+        <span className={styles.pageBarTitle}>{project?.name || 'Storyboard'}</span>
+        <div className={styles.viewSwitch} role="group" aria-label="Storyboard view">
+          <button
+            type="button"
+            className={`${styles.viewSwitchBtn} ${viewMode === 'basic' ? styles.viewSwitchBtnActive : ''}`}
+            onClick={() => setViewMode('basic')}
+          >
+            Basic
+          </button>
+          <button
+            type="button"
+            className={`${styles.viewSwitchBtn} ${viewMode === 'advance' ? styles.viewSwitchBtnActive : ''}`}
+            onClick={() => setViewMode('advance')}
+          >
+            Advance
+          </button>
+        </div>
+        {viewMode === 'basic' ? (
+          <button
+            type="button"
+            className={styles.generateSceneBtn}
+            onClick={() => setImageGateOpen(true)}
+            disabled={imageGateOpen || listLoading || basicShotsLoading}
+          >
+            Generate scene
+          </button>
+        ) : null}
+        <StoryboardEditMenu projectId={projectId} />
+      </div>
+      <RegenerateStoryboardBanner
+        projectId={projectId}
+        regenerating={regenerating}
+        onRegenerate={() => executeStoryboardPipeline({ force: true })}
+      />
       {error ? (
         <div className={styles.errorBox} role="alert">
           {error}
         </div>
       ) : null}
 
-      <div className={styles.mobileTabs} role="tablist" aria-label="Storyboard panels">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobilePanel === 'scenes'}
-          className={`${styles.mobileTab} ${mobilePanel === 'scenes' ? styles.mobileTabActive : ''}`}
-          onClick={() => setMobilePanel('scenes')}
-        >
-          Scenes
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobilePanel === 'shots'}
-          className={`${styles.mobileTab} ${mobilePanel === 'shots' ? styles.mobileTabActive : ''}`}
-          onClick={() => setMobilePanel('shots')}
-        >
-          Shots
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobilePanel === 'inspector'}
-          className={`${styles.mobileTab} ${mobilePanel === 'inspector' ? styles.mobileTabActive : ''}`}
-          onClick={() => setMobilePanel('inspector')}
-          disabled={!selectedShot}
-        >
-          Inspector
-        </button>
-      </div>
-
-      <div className={workspaceClassName}>
-        <StoryboardWorkspaceSceneList
+      {viewMode === 'basic' ? (
+        <StoryboardBasicView
           scenes={storyboardScenes}
-          selectedSceneId={selectedSceneId}
-          loading={listLoading}
-          onSelectScene={handleSelectScene}
-          onAddScene={handleAddScene}
-          addingScene={addingScene}
-        />
-
-        <StoryboardShotsPanel
-          scene={selectedScene}
-          shots={storyboardShots}
-          selectedShotId={selectedShotId}
-          sceneLoading={sceneLoading}
-          generationActive={generationActive}
-          generationStarting={starting}
-          generationCancelling={shotCancelling}
-          generationError={generationError}
-          progress={progress}
+          shotsBySceneId={basicShotsBySceneId}
+          loading={listLoading || basicShotsLoading}
           generatingShotId={generatingShotId}
-          addingShot={addingShot}
-          onGenerateShots={handleGenerateShots}
-          onCancelGeneration={cancelShotGeneration}
-          onSelectShot={handleSelectShot}
-          onGenerateImage={handleGenerateShotImage}
-          onAddShot={handleAddShot}
-          onDuplicateShot={handleDuplicateShot}
-          onDeleteShot={handleDeleteShot}
-          onMoveShot={handleMoveShot}
-          imageGenerationProgress={imageGenerationProgress}
-          imageGenerationStarting={imageStarting}
-          imageGenerationResuming={imageResuming}
-          imageGenerationActive={imageGenerationActive}
-          imageGenerationComplete={imageGenerationComplete}
-          imageGenerationStalled={imageGenerationStalled}
-          imageGenerationSlowProgress={imageGenerationSlowProgress}
-          imageGenerationError={imageGenerationError}
-          onGenerateAllImages={handleGenerateAllImages}
-          onResumeImageGeneration={resumeImageGeneration}
-          onDismissSlowImageProgress={dismissSlowImageProgress}
-          onCancelImageGeneration={cancelImageGeneration}
-          imageGenerationCancelling={imageCancelling}
+          onFullscreenShot={handleOpenFullscreen}
+          onRegenerateShot={handleOpenRegenerate}
         />
+      ) : (
+        <>
+          <div className={styles.mobileTabs} role="tablist" aria-label="Storyboard panels">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePanel === 'scenes'}
+              className={`${styles.mobileTab} ${mobilePanel === 'scenes' ? styles.mobileTabActive : ''}`}
+              onClick={() => setMobilePanel('scenes')}
+            >
+              Scenes
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePanel === 'shots'}
+              className={`${styles.mobileTab} ${mobilePanel === 'shots' ? styles.mobileTabActive : ''}`}
+              onClick={() => setMobilePanel('shots')}
+            >
+              Shots
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={mobilePanel === 'inspector'}
+              className={`${styles.mobileTab} ${mobilePanel === 'inspector' ? styles.mobileTabActive : ''}`}
+              onClick={() => setMobilePanel('inspector')}
+              disabled={!selectedShot}
+            >
+              Inspector
+            </button>
+          </div>
 
-        <StoryboardShotEditor
-          shot={selectedShot}
-          projectCharacters={characters}
-          projectEnvironments={environments}
-          saving={shotSaving}
-          generatingImage={Boolean(
-            selectedShot?.apiId && String(generatingShotId) === String(selectedShot.apiId)
-          )}
-          saveError={shotSaveError}
-          saveMessage={shotSaveMessage}
-          onSave={handleSaveShot}
-          onGenerateImage={handleGenerateShotImage}
-        />
-      </div>
+          <div className={workspaceClassName}>
+            <StoryboardWorkspaceSceneList
+              scenes={storyboardScenes}
+              selectedSceneId={selectedSceneId}
+              loading={listLoading}
+              onSelectScene={handleSelectScene}
+              onAddScene={handleAddScene}
+              addingScene={addingScene}
+            />
+
+            <StoryboardShotsPanel
+              scene={selectedScene}
+              shots={storyboardShots}
+              selectedShotId={selectedShotId}
+              sceneLoading={sceneLoading}
+              generationActive={generationActive}
+              generationStarting={starting}
+              generationError={generationError}
+              generatingShotId={generatingShotId}
+              addingShot={addingShot}
+              onGenerateShots={handleGenerateShots}
+              onSelectShot={handleSelectShot}
+              onGenerateImage={handleGenerateShotImage}
+              onAddShot={handleAddShot}
+              onDuplicateShot={handleDuplicateShot}
+              onDeleteShot={handleDeleteShot}
+              onMoveShot={handleMoveShot}
+              imageGenerationError={imageGenerationError}
+              imageGenerationActive={imageGenerationActive}
+              onGenerateAllImages={handleGenerateAllImages}
+              onFullscreenShot={handleOpenFullscreen}
+              onRegenerateShot={handleOpenRegenerate}
+            />
+
+            <StoryboardShotEditor
+              shot={selectedShot}
+              projectCharacters={characters}
+              projectEnvironments={environments}
+              saving={shotSaving}
+              generatingImage={Boolean(
+                selectedShot?.apiId && String(generatingShotId) === String(selectedShot.apiId)
+              )}
+              saveError={shotSaveError}
+              saveMessage={shotSaveMessage}
+              onSave={handleSaveShot}
+              onGenerateImage={handleGenerateShotImage}
+            />
+          </div>
+        </>
+      )}
+
+      <StoryboardImageGateModal
+        open={imageGateOpen}
+        projectId={projectId}
+        scenes={storyboardScenes}
+        onCharacterUpdated={handleImageGateCharacter}
+        onShotUpdated={handleImageGateShot}
+        onClose={() => setImageGateOpen(false)}
+      />
+
+      <ShotFullscreenViewer
+        open={fullscreenIndex != null && lightboxItems.length > 0}
+        items={lightboxItems}
+        index={Math.min(fullscreenIndex ?? 0, Math.max(lightboxItems.length - 1, 0))}
+        onIndexChange={setFullscreenIndex}
+        onClose={() => setFullscreenIndex(null)}
+      />
+
+      <ShotRegenerateModal
+        open={Boolean(regenerateShot)}
+        shot={regenerateShot}
+        sceneLabel={regenerateSceneLabel}
+        submitting={
+          Boolean(regenerateShot?.apiId && String(generatingShotId) === String(regenerateShot.apiId))
+        }
+        error={regenerateError}
+        onClose={handleCloseRegenerate}
+        onSubmit={handleRegenerateShot}
+      />
+
+      <DebugPanel
+        pageName="Storyboard"
+        loading={listLoading || sceneLoading}
+        dataCount={storyboardScenes.length}
+        requestTriggered={requestTriggered}
+      />
     </div>
   )
 }

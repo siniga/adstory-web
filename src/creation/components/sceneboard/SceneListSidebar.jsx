@@ -49,10 +49,10 @@ export default function SceneListSidebar({
     <aside className={styles.sidebar}>
       <div className={styles.sidebarHeader}>
         <div className={styles.sidebarHeaderCopy}>
-          <h2 className={styles.sidebarTitle}>Scene List</h2>
+          <h2 className={styles.sidebarTitle}>Sequences</h2>
           {sceneGenerationActive ? (
             <p className={styles.sidebarGeneratingHint} role="status">
-              Generating scenes…
+              Generating sequences…
             </p>
           ) : null}
         </div>
@@ -60,8 +60,8 @@ export default function SceneListSidebar({
           type="button"
           className={styles.sidebarAddBtn}
           onClick={onAddSceneAtEnd}
-          aria-label="Add scene at end"
-          title="Add scene at end"
+          aria-label="Add sequence at end"
+          title="Add sequence at end"
         >
           +
         </button>
@@ -85,9 +85,9 @@ export default function SceneListSidebar({
                 onClick={() => onSelectScene(scene.apiId)}
               >
                 <span className={styles.sceneItemNumber}>
-                  Scene {scene.scene_number ?? '—'}
+                  Sequence {scene.scene_number ?? '—'}
                 </span>
-                <span className={styles.sceneItemTitle}>{scene.title || 'Untitled scene'}</span>
+                <span className={styles.sceneItemTitle}>{scene.title || 'Untitled sequence'}</span>
                 <span className={`${styles.statusBadge} ${badgeClass(tone)}`}>
                   {statusLabel}
                 </span>
@@ -96,7 +96,7 @@ export default function SceneListSidebar({
                 <button
                   type="button"
                   className={styles.sceneItemMenuBtn}
-                  aria-label={`Scene actions for ${scene.title || 'scene'}`}
+                  aria-label={`Sequence actions for ${scene.title || 'sequence'}`}
                   aria-expanded={menuOpen}
                   onClick={(event) => {
                     event.stopPropagation()

@@ -4,7 +4,6 @@ export default function ModeSwitcher({
   activeMode,
   onModeChange,
   storyboardEnabled = true,
-  studioEnabled = true,
   compact = false,
 }) {
   return (
@@ -33,17 +32,6 @@ export default function ModeSwitcher({
           title={storyboardEnabled ? 'Storyboard' : 'Complete assets first'}
         >
           Storyboard
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeMode === 'studio'}
-          className={`${styles.tab} ${activeMode === 'studio' ? styles.tabActive : ''}`}
-          onClick={() => (studioEnabled ? onModeChange('studio') : undefined)}
-          disabled={!studioEnabled}
-          title={studioEnabled ? 'Studio' : 'Complete storyboard selections first'}
-        >
-          Studio
         </button>
       </div>
     </div>

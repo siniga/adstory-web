@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { mapApiEnvironment, mapApiEnvironments } from '../services/api/mapApiProject'
-import * as screenlyApi from '../services/screenlyApi'
+import * as projectApi from '../services/projectApi'
 import {
   ASSET_POLL_INTERVAL_MS,
   replaceItemInList,
@@ -48,7 +48,7 @@ export function useEnvironmentAssetWorkflow({
   const refreshEnvironmentList = useCallback(async () => {
     if (!projectId) return []
 
-    const response = await screenlyApi.getProjectEnvironments(projectId)
+    const response = await projectApi.getProjectEnvironments(projectId)
     const mapped = mapApiEnvironments(response.environments ?? [])
 
     if (mountedRef.current) {
@@ -162,7 +162,7 @@ export function useEnvironmentAssetWorkflow({
       setBuildError(null)
 
       try {
-        const result = await screenlyApi.generateEnvironment(environmentId)
+        const result = await projectApi.generateEnvironment(environmentId)
 
         if (result?.environment) {
           updateSingleEnvironment(mapApiEnvironment(result.environment))
@@ -185,7 +185,7 @@ export function useEnvironmentAssetWorkflow({
     setIsBuildingAll(true)
 
     try {
-      await screenlyApi.generateAllEnvironments(projectId)
+      await projectApi.generateAllEnvironments(projectId)
       await refreshEnvironmentList()
       await pollEnvironmentList()
     } catch (err) {

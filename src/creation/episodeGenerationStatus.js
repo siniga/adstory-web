@@ -3,6 +3,7 @@ import { isGenerationInProgress, isGenerationTerminal, PROJECT_GEN_STATUS } from
 export const EPISODE_STATUS = {
   DRAFT: 'draft',
   PLANNED: 'planned',
+  WRITTEN: 'written',
   SCENES_GENERATING: 'scenes_generating',
   SCENES_COMPLETED: 'scenes_completed',
   SHOTS_GENERATING: 'shots_generating',
@@ -11,12 +12,14 @@ export const EPISODE_STATUS = {
 }
 
 export function mapAdstoryEpisode(episode = {}) {
+  const screenplay = episode.screenplay ?? episode.script ?? ''
   return {
     id: episode.id,
-    projectId: episode.adstory_project_id ?? episode.projectId ?? null,
+    projectId: episode.adstory_project_id ?? episode.projectId ?? episode.project_id ?? null,
     episodeNumber: episode.episode_number ?? episode.episodeNumber ?? 0,
     title: episode.title ?? '',
     summary: episode.summary ?? '',
+    screenplay,
     estimatedSceneCount: episode.estimated_scene_count ?? episode.estimatedSceneCount ?? 0,
     startSceneNumber: episode.start_scene_number ?? episode.startSceneNumber ?? null,
     endSceneNumber: episode.end_scene_number ?? episode.endSceneNumber ?? null,
@@ -59,7 +62,10 @@ export function isEpisodeSceneGenerationActive(episode) {
 }
 
 export function isEpisodeSceneGenerationComplete(episode) {
+  const screenplay = typeof episode?.screenplay === 'string' ? episode.screenplay.trim() : ''
   return (
+    episode?.status === EPISODE_STATUS.WRITTEN ||
+    screenplay.length >= 20 ||
     episode?.sceneGenerationStatus === 'completed' ||
     episode?.status === EPISODE_STATUS.SCENES_COMPLETED ||
     episode?.status === EPISODE_STATUS.SHOTS_GENERATING ||

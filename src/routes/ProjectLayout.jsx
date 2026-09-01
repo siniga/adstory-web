@@ -1,29 +1,27 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { BRAND } from '../config/branding'
 import DeleteProjectConfirmModal from '../app/components/DeleteProjectConfirmModal'
 import ErrorModal from '../app/components/ErrorModal'
-import { isProjectReadyForStoryboard, isProjectReadyForStudio } from '../project/projectModel'
-import { isStoryboardComplete } from '../storyboard/storyboardStatus'
 import { useProjectStore } from '../project/ProjectStoreContext'
-import ModeSwitcher from '../app/ModeSwitcher'
 import { formatUserFriendlyError } from '../utils/userFriendlyErrors'
-import styles from '../app/ScreenlyAppShell.module.css'
+import styles from '../app/AppShell.module.css'
 import workspaceStyles from '../app/ProjectWorkspace.module.css'
+import ProjectItemsSidebar from '../project/ProjectItemsSidebar'
 import {
-  getStoryAreaStep,
-  projectStepPath,
-  projectStoryboardPath,
-  projectStudioPath,
-  workspaceModeFromPathname,
-} from './paths'
+  getAvailableProjectItems,
+  PROJECT_ITEM_CATALOG,
+  PROJECT_OVERVIEW_ID,
+  projectItemsPath,
+} from '../project/projectItems'
+import { projectStepPath, stepFromPathname } from './paths'
+import RegenerateStoryboardBanner from '../storyboard/components/RegenerateStoryboardBanner'
 
 export default function ProjectLayout({ projectState, user, onLogout }) {
   const { projectId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
   const projectStore = useProjectStore()
-  const [studioFocusMode, setStudioFocusMode] = useState(false)
   const [hideWorkspaceNav, setHideWorkspaceNav] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null)
@@ -32,10 +30,12 @@ export default function ProjectLayout({ projectState, user, onLogout }) {
   const [deleteError, setDeleteError] = useState(null)
 
   const project = projectStore.project
-  const activeMode = workspaceModeFromPathname(location.pathname)
-  const studioReady = isProjectReadyForStudio(project)
-  const storyboardReady = isProjectReadyForStoryboard(project)
-  const storyboardComplete = isStoryboardComplete(project.studioScenes ?? [])
+  const availableItems = getAvailableProjectItems(project, {
+    scenes: projectStore.scenes,
+    characters: projectStore.characters,
+    environments: projectStore.environments,
+  })
+  const activeItemId = stepFromPathname(location.pathname)
 
   useEffect(() => {
     let cancelled = false
@@ -60,8 +60,6 @@ export default function ProjectLayout({ projectState, user, onLogout }) {
   }, [projectId])
 
   const handleBackToProjects = () => {
-    projectState.exitProject()
-    projectStore.clearProject()
     navigate('/projects')
   }
 
@@ -92,24 +90,24 @@ export default function ProjectLayout({ projectState, user, onLogout }) {
     }
   }
 
-  const handleModeChange = (mode) => {
-    if (mode === 'storyboard' && !storyboardReady) return
-    if (mode === 'studio' && (!studioReady || !storyboardComplete)) return
-
-    if (mode === 'story') {
-      navigate(projectStepPath(projectId, getStoryAreaStep(project)))
+  const handleSelectProjectItem = (itemId) => {
+    if (!itemId || itemId === PROJECT_OVERVIEW_ID) {
+      navigate(projectItemsPath(projectId))
       return
     }
 
-    if (mode === 'storyboard') {
-      navigate(projectStoryboardPath(projectId))
-      return
-    }
-
-    if (mode === 'studio') {
-      navigate(projectStudioPath(projectId))
-    }
+    navigate(projectStepPath(projectId, itemId), {
+      state: { stepUnlock: itemId },
+    })
   }
+
+  const handleBackToOverview = () => {
+    navigate(projectItemsPath(projectId))
+  }
+
+  const isOverview = !activeItemId
+  const activeItemLabel =
+    PROJECT_ITEM_CATALOG.find((item) => item.id === activeItemId)?.label ?? null
 
   if (loading) {
     return <div className={styles.loading}>Loading project…</div>
@@ -127,8 +125,8 @@ export default function ProjectLayout({ projectState, user, onLogout }) {
   }
 
   return (
-    <div className={`${styles.shell} ${studioFocusMode ? styles.shellStudioFocus : ''}`}>
-      {!studioFocusMode && !hideWorkspaceNav && (
+    <div className={styles.shell}>
+      {!hideWorkspaceNav && (
         <div className={workspaceStyles.navChrome}>
           <div className={workspaceStyles.navPanel}>
             <div className={workspaceStyles.backBar}>
@@ -137,18 +135,41 @@ export default function ProjectLayout({ projectState, user, onLogout }) {
                 <span className={workspaceStyles.brandName}>{BRAND.name}</span>
               </div>
               <span className={workspaceStyles.divider} aria-hidden="true" />
-              <span className={workspaceStyles.projectName}>{project.name}</span>
-              <ModeSwitcher
-                activeMode={activeMode}
-                onModeChange={handleModeChange}
-                storyboardEnabled={storyboardReady}
-                studioEnabled={studioReady && storyboardComplete}
-                compact
-              />
+              {isOverview ? (
+                <span className={workspaceStyles.projectName}>{project.name}</span>
+              ) : (
+                <div className={workspaceStyles.breadcrumb}>
+                  <button
+                    type="button"
+                    className={workspaceStyles.projectNameBtn}
+                    onClick={handleBackToOverview}
+                    title="Back to project overview"
+                  >
+                    {project.name}
+                  </button>
+                  {activeItemLabel ? (
+                    <>
+                      <span className={workspaceStyles.crumbSep} aria-hidden="true">
+                        /
+                      </span>
+                      <span className={workspaceStyles.crumbCurrent}>{activeItemLabel}</span>
+                    </>
+                  ) : null}
+                </div>
+              )}
               <div className={workspaceStyles.headerRight}>
-                <button type="button" className={workspaceStyles.backBtn} onClick={handleBackToProjects}>
+                {!isOverview ? (
+                  <button
+                    type="button"
+                    className={workspaceStyles.backBtn}
+                    onClick={handleBackToOverview}
+                  >
+                    ← Overview
+                  </button>
+                ) : null}
+                <Link to="/projects" className={workspaceStyles.backBtn}>
                   ← Library
-                </button>
+                </Link>
                 <button
                   type="button"
                   className={workspaceStyles.deleteProjectBtn}
@@ -165,15 +186,27 @@ export default function ProjectLayout({ projectState, user, onLogout }) {
           </div>
         </div>
       )}
-      <div className={styles.content}>
-        <Outlet
-          context={{
-            projectState,
-            projectStore,
-            setHideWorkspaceNav,
-            setStudioFocusMode,
-          }}
-        />
+      <div className={`${styles.content} ${workspaceStyles.workspaceBody}`}>
+        {!hideWorkspaceNav ? (
+          <ProjectItemsSidebar
+            items={availableItems}
+            activeId={activeItemId}
+            onSelect={handleSelectProjectItem}
+          />
+        ) : null}
+        <div className={workspaceStyles.workspaceMain}>
+          <RegenerateStoryboardBanner projectId={projectId} />
+          <div className={workspaceStyles.workspaceOutlet}>
+            <Outlet
+              context={{
+                projectState,
+                projectStore,
+                setHideWorkspaceNav,
+                onSelectProjectItem: handleSelectProjectItem,
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       <DeleteProjectConfirmModal

@@ -4,6 +4,7 @@ import {
   getStoryboardShotImageBadge,
   getStoryboardShotImageStatus,
 } from '../storyboardWorkspaceStatus'
+import ShotCardOverlay from './ShotCardOverlay'
 import styles from '../ProjectStoryboard.module.css'
 
 function readShotText(shot, ...keys) {
@@ -36,8 +37,6 @@ function ShotStatusBadge({ shot }) {
 
 function ShotImageArea({ shot, title, generating, onRetryImage }) {
   const [imageBroken, setImageBroken] = useState(false)
-  const [imageLoaded, setImageLoaded] = useState(false)
-  const imgRef = useRef(null)
   const imageUrl = getShotDisplayImageUrl(shot)
   const imageStatus = getStoryboardShotImageStatus(shot)
   const imageInFlight = imageStatus === 'queued' || imageStatus === 'generating'
@@ -45,26 +44,16 @@ function ShotImageArea({ shot, title, generating, onRetryImage }) {
 
   useEffect(() => {
     setImageBroken(false)
-    setImageLoaded(false)
   }, [imageUrl, shot?.apiId, shot?.id])
-
-  useEffect(() => {
-    const img = imgRef.current
-    if (img?.complete && img.naturalWidth > 0) {
-      setImageLoaded(true)
-    }
-  }, [imageUrl, canShowImage])
 
   if (canShowImage) {
     return (
       <img
-        ref={imgRef}
         src={imageUrl}
         alt={title}
-        className={`${styles.shotImage} ${imageLoaded ? styles.shotImageVisible : ''}`}
+        className={styles.shotImage}
         loading="lazy"
         decoding="async"
-        onLoad={() => setImageLoaded(true)}
         onError={() => setImageBroken(true)}
       />
     )
@@ -122,6 +111,8 @@ const StoryboardShotCard = memo(function StoryboardShotCard({
   onDelete,
   onMoveUp,
   onMoveDown,
+  onFullscreen,
+  onRegenerate,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef(null)
@@ -162,6 +153,13 @@ const StoryboardShotCard = memo(function StoryboardShotCard({
           title={imageLabel}
           generating={generating}
           onRetryImage={onRetryImage}
+        />
+        <ShotCardOverlay
+          hasImage={Boolean(getShotDisplayImageUrl(shot))}
+          regenerating={generating}
+          canRegenerate={Boolean(shot.apiId)}
+          onFullscreen={() => onFullscreen?.(shot)}
+          onRegenerate={() => onRegenerate?.(shot)}
         />
       </div>
 

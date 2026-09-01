@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import * as screenlyApi from '../../services/screenlyApi'
+import * as projectApi from '../../services/projectApi'
 import { findShotById } from '../data'
 import CharacterAssignmentSection from './CharacterAssignmentSection'
 import CurrentShotSummary from './CurrentShotSummary'
@@ -122,7 +122,7 @@ export default function ShotInspectorTab({
     setAssetActionError(null)
 
     try {
-      await screenlyApi.syncShotCharacters(shotApiId, characterIds)
+      await projectApi.syncShotCharacters(shotApiId, characterIds)
       await refreshShotAssets()
       setCharacterModalOpen(false)
     } catch (err) {
@@ -141,7 +141,7 @@ export default function ShotInspectorTab({
     setAssetActionError(null)
 
     try {
-      await screenlyApi.syncShotEnvironment(shotApiId, environmentId)
+      await projectApi.syncShotEnvironment(shotApiId, environmentId)
       await refreshShotAssets()
       setEnvironmentModalOpen(false)
     } catch (err) {
@@ -160,7 +160,7 @@ export default function ShotInspectorTab({
     setAssetActionError(null)
 
     try {
-      await screenlyApi.syncShotObjects(shotApiId, objectIds)
+      await projectApi.syncShotObjects(shotApiId, objectIds)
       await refreshShotAssets()
       setObjectModalOpen(false)
     } catch (err) {
@@ -178,7 +178,7 @@ export default function ShotInspectorTab({
     setAssetActionError(null)
 
     try {
-      await screenlyApi.removeShotCharacter(shotApiId, characterId)
+      await projectApi.removeShotCharacter(shotApiId, characterId)
       await refreshShotAssets()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove character'
@@ -195,7 +195,7 @@ export default function ShotInspectorTab({
     setAssetActionError(null)
 
     try {
-      await screenlyApi.removeShotEnvironment(shotApiId)
+      await projectApi.removeShotEnvironment(shotApiId)
       await refreshShotAssets()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove environment'
@@ -212,7 +212,7 @@ export default function ShotInspectorTab({
     setAssetActionError(null)
 
     try {
-      await screenlyApi.removeShotObject(shotApiId, objectId)
+      await projectApi.removeShotObject(shotApiId, objectId)
       await refreshShotAssets()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to remove object'
@@ -248,7 +248,7 @@ export default function ShotInspectorTab({
     setPromptError(null)
 
     try {
-      const result = await screenlyApi.getShotPrompt(shotApiId)
+      const result = await projectApi.getShotPrompt(shotApiId)
       setShotPrompt(result.prompt ?? '')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to rebuild prompt'

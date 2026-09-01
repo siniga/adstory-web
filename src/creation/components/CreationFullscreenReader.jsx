@@ -9,6 +9,7 @@ export default function CreationFullscreenReader({
   eyebrow,
   title,
   subtitle,
+  variant = 'story',
   children,
 }) {
   const containerRef = useRef(null)
@@ -69,7 +70,7 @@ export default function CreationFullscreenReader({
   return createPortal(
     <div
       ref={containerRef}
-      className={styles.overlay}
+      className={`${styles.overlay} ${styles[variant] ?? ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={`${title} fullscreen reader`}
@@ -89,7 +90,9 @@ export default function CreationFullscreenReader({
           <IconClose />
         </button>
       </header>
-      <div className={styles.body}>{children}</div>
+      <div className={styles.body}>
+        <div className={styles.sheet}>{children}</div>
+      </div>
     </div>,
     document.body
   )

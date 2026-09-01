@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import * as screenlyApi from '../../services/screenlyApi'
+import * as projectApi from '../../services/projectApi'
 import { IconTrash } from '../../studio/icons'
 import ObjectDeleteModal from './ObjectDeleteModal'
 import ObjectEditModal from './ObjectEditModal'
@@ -237,13 +237,13 @@ export default function ObjectsStep({
   }
 
   const handleAccept = (object) =>
-    runObjectAction(object.id, () => screenlyApi.acceptObject(object.id))
+    runObjectAction(object.id, () => projectApi.acceptObject(object.id))
 
   const handleReject = (object) =>
-    runObjectAction(object.id, () => screenlyApi.rejectObject(object.id))
+    runObjectAction(object.id, () => projectApi.rejectObject(object.id))
 
   const handleRestore = (object) =>
-    runObjectAction(object.id, () => screenlyApi.restoreObject(object.id))
+    runObjectAction(object.id, () => projectApi.restoreObject(object.id))
 
   const handleAcceptAll = async () => {
     if (!projectId) return
@@ -252,7 +252,7 @@ export default function ObjectsStep({
     setActionError(null)
 
     try {
-      await screenlyApi.acceptAllObjects(projectId)
+      await projectApi.acceptAllObjects(projectId)
       await syncObjectsFromProject()
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Accept all failed'
@@ -270,7 +270,7 @@ export default function ObjectsStep({
     setActionError(null)
 
     try {
-      await screenlyApi.updateObject(objectToEdit.id, {
+      await projectApi.updateObject(objectToEdit.id, {
         name: form.name,
         category: form.category,
         description: form.description,
@@ -309,7 +309,7 @@ export default function ObjectsStep({
     setActionError(null)
 
     try {
-      await screenlyApi.deleteObject(objectId)
+      await projectApi.deleteObject(objectId)
       setItems((prev) => prev.filter((item) => item.id !== objectId))
       setObjectToDelete(null)
 
@@ -436,14 +436,6 @@ export default function ObjectsStep({
             disabled={suggesting || assigning}
           >
             {assigning ? 'Assigning assets...' : 'Assign Assets to Shots'}
-          </button>
-          <button
-            type="button"
-            className={styles.ghostBtn}
-            onClick={handleContinueToStudio}
-            disabled={suggesting || assigning}
-          >
-            Continue to Studio
           </button>
           <button
             type="button"

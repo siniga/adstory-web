@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import DebugPanel from '../../components/DebugPanel'
 import {
-  generateEnvironmentImage,
   getEnvironmentDbId,
   mergeAdstoryEnvironmentUpdate,
 } from '../../services/adstoryApi'
+import * as projectApi from '../../services/projectApi'
 import { getEnvironmentImageUrl } from '../../utils/resolveMediaUrl'
 import { formatUserFriendlyError } from '../../utils/userFriendlyErrors'
 import ErrorModal from '../../app/components/ErrorModal'
 import ImagePreviewModal from '../../app/components/ImagePreviewModal'
-import AiGenerationProgress from './AiGenerationProgress'
 import EnvironmentPlanningPanel from './EnvironmentPlanningPanel'
 import useEnvironmentGeneration from '../hooks/useEnvironmentGeneration'
-import { isGenerationInProgress } from '../aiGenerationStatus'
+import { isGenerationInProgress, isGenerationTerminal } from '../aiGenerationStatus'
 import {
-  areEnvironmentsGenerationSettled,
+  allEnvironmentsImageComplete,
   ENVIRONMENT_IMAGE_STATUS,
   getEnvironmentDisplayStatus,
   hasProjectEnvironments,
@@ -215,7 +215,6 @@ export default function EnvironmentsStep({
   onGenerationMetaChange,
   onSave,
   onBackToCharacters,
-  onContinueToStoryboard,
 }) {
   const {
     environments,
@@ -225,28 +224,45 @@ export default function EnvironmentsStep({
 
   console.log('Environment page rendering:', environments.length)
 
-  const [stepDataLoading, setStepDataLoading] = useState(true)
+  const [stepDataLoading, setStepDataLoading] = useState(() => environments.length === 0)
   const [generatingIds, setGeneratingIds] = useState(() => new Set())
+  const [requestTriggered, setRequestTriggered] = useState(false)
   const [retryingIds, setRetryingIds] = useState(() => new Set())
   const [rowErrors, setRowErrors] = useState({})
   const [actionError, setActionError] = useState(null)
-  const [continuing, setContinuing] = useState(false)
   const [previewImage, setPreviewImage] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [generationErrorModal, setGenerationErrorModal] = useState(null)
   const isSaving = saveStatus === 'saving'
   const saveStatusLabel =
     saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : null
-  const combinedLoading = loading || stepDataLoading
+  const combinedLoading = stepDataLoading && environments.length === 0
+
+  useEffect(() => {
+    if (environments.length > 0) {
+      setStepDataLoading(false)
+    }
+  }, [environments.length])
 
   useEffect(() => {
     if (!projectId) return undefined
 
     let cancelled = false
-    setStepDataLoading(true)
+    setRequestTriggered(true)
+    if (environments.length === 0) {
+      setStepDataLoading(true)
+    }
 
     loadEnvironments(projectId, { force: true })
-      .catch(() => {})
+      .catch((err) => {
+        if (!cancelled) {
+          setActionError(
+            formatUserFriendlyError(
+              err instanceof Error ? err.message : 'Failed to load environments'
+            ).message
+          )
+        }
+      })
       .finally(() => {
         if (!cancelled) setStepDataLoading(false)
       })
@@ -254,7 +270,7 @@ export default function EnvironmentsStep({
     return () => {
       cancelled = true
     }
-    // Load environments once per project visit; only projectId should trigger reload.
+    // Always refetch on visit so hero images from background generation appear.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId])
 
@@ -265,11 +281,6 @@ export default function EnvironmentsStep({
       mergeEnvironments(next)
     },
     [environments, mergeEnvironments]
-  )
-
-  const reloadEnvironmentsOnComplete = useCallback(
-    () => loadEnvironments(projectId, { force: true }),
-    [loadEnvironments, projectId]
   )
 
   const handleGenerationError = useCallback((formatted) => {
@@ -284,24 +295,25 @@ export default function EnvironmentsStep({
     starting,
     startGeneration,
     retryEnvironment,
-    handleResumeGeneration,
   } = useEnvironmentGeneration({
-    enabled: Boolean(projectId) && !combinedLoading,
+    enabled: false,
     projectId,
     initialStatus: environmentGenerationStatus,
-    initialStartedAt: environmentGenerationStartedAt,
     visualStyle: style,
     environments,
-    reloadEnvironmentsOnComplete,
-    onEnvironmentsChange: mergeEnvironments,
-    onGenerationMetaChange,
     onError: handleGenerationError,
   })
 
-  const environmentsSettled = areEnvironmentsGenerationSettled(environments)
+  const environmentCount = environments.length
+  const isImageGenerationBusy = generatingIds.size > 0
+
+  const environmentsWorkComplete =
+    allEnvironmentsImageComplete(environments) ||
+    isGenerationTerminal(environmentGenerationStatus) ||
+    isGenerationTerminal(progress?.status)
 
   const generationActive =
-    !environmentsSettled &&
+    !environmentsWorkComplete &&
     (monitoring ||
       Boolean(resuming) ||
       starting ||
@@ -310,10 +322,12 @@ export default function EnvironmentsStep({
       isGenerationInProgress(environmentGenerationStatus) ||
       isGenerationInProgress(progress?.status))
 
-  const environmentsReady = hasProjectEnvironments(environments) && environmentsSettled
-
   const showPlanningPanel =
-    !combinedLoading && !loadError && !hasProjectEnvironments(environments) && !generationActive
+    !combinedLoading &&
+    !loadError &&
+    environmentCount === 0 &&
+    !hasProjectEnvironments(environments) &&
+    !generationActive
 
   useEffect(() => {
     if (!selectedId && environments.length) setSelectedId(environments[0].id)
@@ -341,9 +355,8 @@ export default function EnvironmentsStep({
       })
 
       try {
-        const result = await generateEnvironmentImage({
+        const result = await projectApi.generateEnvironmentImage({
           environment,
-          style,
           project_id: projectId,
           environment_id: getEnvironmentDbId(environment),
         })
@@ -367,7 +380,7 @@ export default function EnvironmentsStep({
         })
       }
     },
-    [projectId, style, patchEnvironments]
+    [projectId, patchEnvironments]
   )
 
   const handleGenerateOne = useCallback(
@@ -411,28 +424,10 @@ export default function EnvironmentsStep({
     onBackToCharacters?.()
   }, [onBackToCharacters])
 
-  const handleContinue = useCallback(async () => {
-    setContinuing(true)
-    setActionError(null)
-
-    try {
-      await onContinueToStoryboard?.(environments)
-    } catch (err) {
-      const message = formatUserFriendlyError(
-        err instanceof Error ? err.message : 'Failed to continue'
-      ).message
-      setActionError(message)
-    } finally {
-      setContinuing(false)
-    }
-  }, [environments, onContinueToStoryboard])
-
   const localModalError = useMemo(
     () => (actionError ? formatUserFriendlyError(actionError) : null),
     [actionError]
   )
-  const environmentCount = environments.length
-  const isImageGenerationBusy = generatingIds.size > 0
 
   const listBody = useMemo(() => {
     if (showPlanningPanel) {
@@ -441,11 +436,23 @@ export default function EnvironmentsStep({
       )
     }
 
-    if (!environmentCount && generationActive) {
-      return null
-    }
-
     if (!environmentCount) {
+      if (combinedLoading) {
+        return (
+          <p className={styles.generationStatus} role="status">
+            Loading saved environments...
+          </p>
+        )
+      }
+
+      if (generationActive) {
+        return (
+          <p className={styles.generationStatus} role="status">
+            Extracting environments from your screenplay…
+          </p>
+        )
+      }
+
       return (
         <div className={styles.stateBlock}>
           <p>No environments were detected in your screenplay yet.</p>
@@ -477,6 +484,7 @@ export default function EnvironmentsStep({
       </div>
     )
   }, [
+    combinedLoading,
     environmentCount,
     generatingIds,
     generationActive,
@@ -522,20 +530,6 @@ export default function EnvironmentsStep({
           </div>
         </header>
 
-        {combinedLoading && !environmentCount ? (
-          <p className={styles.generationStatus} role="status">
-            Loading saved environments...
-          </p>
-        ) : null}
-        <AiGenerationProgress
-          type="environments"
-          progress={progress}
-          startedAt={environmentGenerationStartedAt}
-          isStuck={isStuck}
-          resuming={resuming}
-          onResume={() => handleResumeGeneration(false)}
-          onRetryFailedAndResume={() => handleResumeGeneration(true)}
-        />
         {loadError ? (
           <div className={styles.inlineErrorBox} role="alert">
             {loadError}
@@ -573,14 +567,6 @@ export default function EnvironmentsStep({
         <button type="button" className={styles.footerBackBtn} onClick={handleBack}>
           Back to Characters
         </button>
-        <button
-          type="button"
-          className={`${styles.footerContinueBtn} ${environmentsReady ? styles.footerContinueBtnActive : ''}`}
-          onClick={handleContinue}
-          disabled={continuing || isSaving || !environmentsReady}
-        >
-          {continuing ? 'Continuing...' : 'Continue to Storyboard'}
-        </button>
       </footer>
 
       <ErrorModal
@@ -602,6 +588,13 @@ export default function EnvironmentsStep({
         imageUrl={previewImage?.imageUrl}
         title={previewImage?.title}
         onClose={() => setPreviewImage(null)}
+      />
+
+      <DebugPanel
+        pageName="Environments"
+        loading={combinedLoading}
+        dataCount={environments.length}
+        requestTriggered={requestTriggered}
       />
     </div>
   )

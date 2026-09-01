@@ -1,6 +1,11 @@
-import { API_URL } from '../config/api'
 import { mapDirectorSuggestions } from '../storyboard/storyboardDirector'
+import { markStoryboardStale } from '../storyboard/storyboardStale'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
+import { apiRequest } from './api'
+
+function noteMaterialEdit(projectId) {
+  markStoryboardStale(projectId)
+}
 
 export const MIN_STORY_LENGTH = 20
 export const MIN_SCRIPT_LENGTH = 20
@@ -222,7 +227,9 @@ export function mapAdstoryShot(shot = {}, options = {}) {
     shot_images: shotImages,
     approved_image: approvedImage,
     image_url: approvedUrl,
+    imageUrl: approvedUrl,
     image_status: imageStatus,
+    imageStatus,
     generation_error: shot.generation_error ?? shot.generationError ?? null,
     updated_at: shot.updated_at ?? null,
     composition_preset: shot.composition_preset ?? null,
@@ -327,51 +334,26 @@ export function mapShotsToApiPayload(shotGroups = []) {
 }
 
 async function postAdstory(endpoint, payload, fallbackMessage) {
-  const res = await fetch(`${API_URL}${endpoint}`, {
+  return apiRequest(endpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify(payload),
+    payload,
+    fallbackMessage,
+    auth: true,
+    sanitize: true,
+    requireSuccess: true,
   })
-
-  let data
-  try {
-    data = await res.json()
-  } catch {
-    throw new Error(fallbackMessage)
-  }
-
-  if (!res.ok || !data.success) {
-    throw new Error(data.message ?? fallbackMessage)
-  }
-
-  return data
 }
 
 async function requestAdstory(endpoint, { method = 'GET', payload, fallbackMessage } = {}) {
-  const res = await fetch(`${API_URL}${endpoint}`, {
+  return apiRequest(endpoint, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: payload != null ? JSON.stringify(payload) : undefined,
+    payload,
+    fallbackMessage,
+    auth: true,
+    sanitize: true,
+    requireSuccess: true,
+    cacheSceneboardGet: true,
   })
-
-  let data
-  try {
-    data = await res.json()
-  } catch {
-    throw new Error(fallbackMessage)
-  }
-
-  if (!res.ok || !data.success) {
-    throw new Error(data.message ?? fallbackMessage)
-  }
-
-  return data
 }
 
 /**
@@ -426,312 +408,23 @@ export function mapAdstoryProjectToApiShape(project = {}) {
   }
 }
 
-export async function createAdstoryProject(data = {}) {
-  const payload = {}
-
-  if (data.title?.trim()) {
-    payload.title = data.title.trim().slice(0, 150)
-  }
-
-  const style = data.style ?? data.visual_style
-  if (style != null && String(style).trim() !== '') {
-    payload.style = String(style).trim().slice(0, 100)
-  }
-
-  if (data.story?.trim()) {
-    payload.story = data.story.trim()
-  }
-
-  if (data.script?.trim()) {
-    payload.script = data.script.trim()
-  }
-
-  if (data.screenplay?.trim()) {
-    payload.screenplay = data.screenplay.trim()
-  }
-
-  if (data.current_step?.trim()) {
-    payload.current_step = data.current_step.trim()
-  }
-
-  if (data.status?.trim()) {
-    payload.status = data.status.trim()
-  }
-
-  if (data.meta && typeof data.meta === 'object') {
-    payload.meta = data.meta
-  }
-
-  const response = await postAdstory('/api/adstory/projects', payload, 'Failed to create project')
-
-  return {
-    projectId: response.project.id,
-    project: response.project,
-  }
-}
-
-export async function getAdstoryProject(projectId) {
-  const data = await requestAdstory(`/api/adstory/projects/${projectId}`, {
-    fallbackMessage: 'Failed to load project',
-  })
-
-  return mapAdstoryProjectToApiShape(data.project)
-}
-
-/**
- * Maps a full Adstory project API record including nested entities.
- */
-export function mapAdstoryFullProjectToApiShape(project = {}) {
-  const episodes = project.episodes_summary ?? project.episodes ?? []
-
-  return {
-    ...mapAdstoryProjectToApiShape(project),
-    episodes,
-    episodes_summary: episodes,
-    scenes: project.scenes ?? [],
-    shots: project.shots ?? [],
-    characters: project.characters ?? [],
-    environments: mapAdstoryEnvironments(project.environments ?? []),
-    objects: project.objects ?? [],
-    ai_tasks_summary: project.ai_tasks_summary ?? null,
-    counts: project.counts ?? null,
-  }
-}
-
-export function mapAdstoryEpisodeFromApi(episode = {}) {
-  return {
-    id: episode.id,
-    adstory_project_id: episode.adstory_project_id,
-    episode_number: episode.episode_number,
-    title: episode.title,
-    summary: episode.summary,
-    estimated_scene_count: episode.estimated_scene_count,
-    start_scene_number: episode.start_scene_number,
-    end_scene_number: episode.end_scene_number,
-    status: episode.status,
-    scene_generation_status: episode.scene_generation_status,
-    scene_generation_error: episode.scene_generation_error,
-    shot_generation_status: episode.shot_generation_status,
-    shot_generation_error: episode.shot_generation_error,
-    scene_count: episode.scene_count,
-    shot_count: episode.shot_count,
-    meta: episode.meta ?? {},
-  }
-}
-
-export async function planAdstoryEpisodes(projectId, { force = false } = {}) {
-  if (projectId == null) {
-    throw new Error('Open a project before planning episodes.')
-  }
-
-  const data = await requestAdstory(`/api/adstory/projects/${projectId}/episodes/plan`, {
-    method: 'POST',
-    payload: force ? { force: true } : {},
-    fallbackMessage: 'Failed to plan episodes',
-  })
-
-  return {
-    started: Boolean(data.started),
-    episodes: (data.episodes ?? []).map(mapAdstoryEpisodeFromApi),
-    episodeCount: data.episode_count ?? (data.episodes?.length ?? 0),
-  }
-}
-
-export async function getAdstoryEpisode(projectId, episodeId) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/episodes/${episodeId}`,
-    { fallbackMessage: 'Failed to load episode' }
-  )
-
-  return {
-    episode: mapAdstoryEpisodeFromApi(data.episode ?? {}),
-    sceneCount: data.scene_count ?? 0,
-    shotCount: data.shot_count ?? 0,
-    progressSummary: data.progress_summary ?? null,
-  }
-}
-
-export async function startEpisodeSceneGeneration(projectId, episodeId, { style, force = false } = {}) {
-  const payload = {}
-  if (style?.trim()) payload.style = style.trim().slice(0, 255)
-  if (force) payload.force = true
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/episodes/${episodeId}/generate-scenes`,
-    {
-      method: 'POST',
-      payload,
-      fallbackMessage: 'Failed to start scene generation',
-    }
-  )
-
-  return {
-    ...data,
-    episode: data.episode ? mapAdstoryEpisodeFromApi(data.episode) : null,
-  }
-}
-
-export async function getEpisodeSceneGenerationProgress(projectId, episodeId) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/episodes/${episodeId}/scenes/progress`,
-    { fallbackMessage: 'Failed to load episode scene progress' }
-  )
-
-  return {
-    ...data,
-    episode: data.episode ? mapAdstoryEpisodeFromApi(data.episode) : null,
-  }
-}
-
-export async function getEpisodeStoryboard(projectId, episodeId) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/episodes/${episodeId}/storyboard`,
-    { fallbackMessage: 'Failed to load episode storyboard' }
-  )
-
-  return {
-    episode: mapAdstoryEpisodeFromApi(data.episode ?? {}),
-    shotGenerationSummary: data.shot_generation_summary ?? null,
-    scenes: data.scenes ?? [],
-  }
-}
-
-export async function startEpisodeShotGeneration(projectId, episodeId, { style, force = false } = {}) {
-  const payload = {}
-  if (style?.trim()) payload.style = style.trim().slice(0, 255)
-  if (force) payload.force = true
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/episodes/${episodeId}/generate-shots`,
-    {
-      method: 'POST',
-      payload,
-      fallbackMessage: 'Failed to start shot generation',
-    }
-  )
-
-  return {
-    ...data,
-    episode: data.episode ? mapAdstoryEpisodeFromApi(data.episode) : null,
-  }
-}
-
-export async function getEpisodeShotGenerationProgress(projectId, episodeId) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/episodes/${episodeId}/shots/progress`,
-    { fallbackMessage: 'Failed to load episode shot progress' }
-  )
-
-  return {
-    ...data,
-    episode: data.episode ? mapAdstoryEpisodeFromApi(data.episode) : null,
-  }
-}
-
-export async function getFullAdstoryProject(projectId) {
-  const data = await requestAdstory(`/api/adstory/projects/${projectId}/full`, {
-    fallbackMessage: 'Failed to load project',
-  })
-
-  return mapAdstoryFullProjectToApiShape(data.project)
-}
-
-export function mapAdstoryProjectSummary(project = {}) {
-  const story = project.story ?? project.story_text ?? ''
-
-  return {
-    id: project.id,
-    title: project.title ?? '',
-    story,
-    story_preview: story.trim().slice(0, 160),
-    updated_at: project.updated_at ?? null,
-    scenes_count: project.scenes_count ?? project.meta?.scenes_count ?? 0,
-    shots_count: project.shots_count ?? project.meta?.shots_count ?? 0,
-    generated_images_count:
-      project.generated_images_count ?? project.meta?.generated_images_count ?? 0,
-  }
-}
-
-export async function listAdstoryProjects() {
-  const data = await requestAdstory('/api/adstory/projects', {
-    fallbackMessage: 'Failed to load projects',
-  })
-
-  const projects = data.projects ?? data.data ?? []
-  if (!Array.isArray(projects)) {
-    return []
-  }
-
-  return projects.map((project) => mapAdstoryProjectSummary(project))
-}
-
-export async function deleteAdstoryProject(projectId) {
+export async function ensureProjectCoverImage(projectId, { force = false } = {}) {
   if (projectId == null || projectId === '') {
-    throw new Error('Project id is required.')
+    throw new Error('Open a project before generating a cover image.')
   }
 
-  await requestAdstory(`/api/adstory/projects/${projectId}`, {
-    method: 'DELETE',
-    fallbackMessage: 'Failed to delete project',
-  })
-}
-
-/** @deprecated Use createAdstoryProject */
-export const createProject = createAdstoryProject
-
-/** @deprecated Use getAdstoryProject */
-export const getProject = getAdstoryProject
-
-export async function saveProjectStory(projectId, data = {}) {
-  const storyText = data.story_text ?? data.story ?? ''
-  const payload = {
-    story_text: storyText?.trim() ?? '',
-  }
-
-  const style = data.style ?? data.visual_style
-  if (style != null && String(style).trim() !== '') {
-    payload.style = String(style).trim().slice(0, 100)
-  }
-
-  if (data.title?.trim()) {
-    payload.title = data.title.trim().slice(0, 150)
-  }
-
-  const response = await requestAdstory(`/api/adstory/projects/${projectId}/story`, {
-    method: 'PUT',
-    payload,
-    fallbackMessage: 'Failed to save story',
+  const data = await requestAdstory(`/api/adstory/projects/${projectId}/generate-cover`, {
+    method: 'POST',
+    payload: { force: Boolean(force) },
+    fallbackMessage: 'Failed to generate project cover',
   })
 
-  return mapAdstoryProjectToApiShape(response.project)
-}
-
-export async function saveProjectScript(projectId, data = {}) {
-  const payload = {
-    script: data.script?.trim() ?? '',
+  return {
+    cover_image_url: data.cover_image_url ?? data.project?.cover_image_url ?? null,
+    generated: Boolean(data.generated),
+    skipped: Boolean(data.skipped),
+    project: data.project ?? null,
   }
-
-  const response = await requestAdstory(`/api/adstory/projects/${projectId}/script`, {
-    method: 'PUT',
-    payload,
-    fallbackMessage: 'Failed to save script',
-  })
-
-  return mapAdstoryProjectToApiShape(response.project)
-}
-
-export async function saveProjectScreenplay(projectId, data = {}) {
-  const payload = {
-    screenplay: data.screenplay?.trim() ?? '',
-  }
-
-  const response = await requestAdstory(`/api/adstory/projects/${projectId}/screenplay`, {
-    method: 'PUT',
-    payload,
-    fallbackMessage: 'Failed to save screenplay',
-  })
-
-  return mapAdstoryProjectToApiShape(response.project)
 }
 
 export async function getProjectScenes(projectId) {
@@ -801,26 +494,6 @@ export async function getSceneGenerationProgress(projectId) {
   return mapSceneGenerationProgress(data)
 }
 
-export async function retrySceneGeneration(projectId, sceneId) {
-  if (projectId == null) {
-    throw new Error('Open a project before retrying scene generation.')
-  }
-  if (sceneId == null) {
-    throw new Error('Scene id is required.')
-  }
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/scenes/${sceneId}/retry`,
-    {
-      method: 'POST',
-      payload: {},
-      fallbackMessage: 'Failed to retry scene generation',
-    }
-  )
-
-  return mapSceneGenerationProgress(data)
-}
-
 export async function resumeSceneGeneration(projectId, { retry_failed = false } = {}) {
   if (projectId == null) {
     throw new Error('Open a project before resuming scene generation.')
@@ -832,6 +505,23 @@ export async function resumeSceneGeneration(projectId, { retry_failed = false } 
       method: 'POST',
       payload: { retry_failed },
       fallbackMessage: 'Failed to resume scene generation',
+    }
+  )
+
+  return mapSceneGenerationProgress(data.progress ?? data)
+}
+
+export async function cancelSceneGeneration(projectId) {
+  if (projectId == null) {
+    throw new Error('Open a project before cancelling scene generation.')
+  }
+
+  const data = await requestAdstory(
+    `/api/adstory/projects/${projectId}/scenes/cancel-generation`,
+    {
+      method: 'POST',
+      payload: {},
+      fallbackMessage: 'Failed to cancel scene generation',
     }
   )
 
@@ -862,6 +552,7 @@ export async function createProjectScene(projectId, sceneData = {}) {
   })
 
   const scenes = mapSceneboardScenesFromApi(data.scene ? [data.scene] : [])
+  noteMaterialEdit(projectId)
   return scenes[0] ?? null
 }
 
@@ -883,6 +574,7 @@ export async function updateProjectScene(projectId, sceneId, sceneData = {}) {
   })
 
   const scenes = mapSceneboardScenesFromApi(data.scene ? [data.scene] : [])
+  noteMaterialEdit(projectId)
   return scenes[0] ?? null
 }
 
@@ -895,6 +587,7 @@ export async function deleteProjectScene(projectId, sceneId, { force = false } =
     method: 'DELETE',
     fallbackMessage: 'Failed to delete scene',
   })
+  noteMaterialEdit(projectId)
 }
 
 export async function saveProjectScenesBulk(projectId, scenes = [], { visual_style } = {}) {
@@ -912,6 +605,7 @@ export async function saveProjectScenesBulk(projectId, scenes = [], { visual_sty
     fallbackMessage: 'Failed to save scenes',
   })
 
+  noteMaterialEdit(projectId)
   return mapAdstoryScenes(data.scenes ?? [])
 }
 
@@ -927,72 +621,6 @@ export async function getProjectShots(projectId, scenes = []) {
     shotGroups,
     groupedByScene: data.grouped_by_scene ?? [],
   }
-}
-
-export function mapShotGenerationProgress(data = {}, scenes = []) {
-  const apiShots = data.shots ?? []
-  const shotGroups = apiShots.length ? mapAdstoryShots(apiShots, scenes) : []
-  const total = data.total ?? 0
-  const completed = data.completed ?? 0
-  const failed = data.failed ?? 0
-  const remaining = data.remaining ?? Math.max(0, total - completed - failed)
-
-  return {
-    status: data.status ?? null,
-    total,
-    completed,
-    failed,
-    remaining,
-    running: data.running ?? 0,
-    queued: data.queued ?? 0,
-    progress_percent: data.progress_percent ?? null,
-    estimated_remaining_seconds: data.estimated_remaining ?? null,
-    stalled: Boolean(data.stalled),
-    currentScene: data.current_scene ?? null,
-    tasks: data.tasks ?? null,
-    shots: apiShots,
-    shotGroups,
-    project: data.project ? mapAdstoryProjectToApiShape(data.project) : null,
-    started: data.started ?? null,
-  }
-}
-
-export async function startShotGeneration(projectId, { style } = {}) {
-  if (projectId == null) {
-    throw new Error('Open a project before starting shot generation.')
-  }
-
-  const payload = {}
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 255)
-  }
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/shots/start-generation`,
-    {
-      method: 'POST',
-      payload,
-      fallbackMessage: 'Failed to start shot generation',
-    }
-  )
-
-  const scenes = data.project?.scenes ?? []
-  return mapShotGenerationProgress(data, scenes)
-}
-
-export async function getShotGenerationProgress(projectId, scenes = []) {
-  if (projectId == null) {
-    throw new Error('Open a project before loading shot generation progress.')
-  }
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/shots/progress`,
-    {
-      fallbackMessage: 'Failed to load shot generation progress',
-    }
-  )
-
-  return mapShotGenerationProgress(data, scenes)
 }
 
 export function mapCharacterGenerationProgress(data = {}) {
@@ -1023,28 +651,6 @@ export function mapCharacterGenerationProgress(data = {}) {
   }
 }
 
-export async function startCharacterGeneration(projectId, { style } = {}) {
-  if (projectId == null) {
-    throw new Error('Open a project before starting character generation.')
-  }
-
-  const payload = {}
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 255)
-  }
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/characters/start-generation`,
-    {
-      method: 'POST',
-      payload,
-      fallbackMessage: 'Failed to start character generation',
-    }
-  )
-
-  return mapCharacterGenerationProgress(data)
-}
-
 export async function getCharacterGenerationProgress(projectId) {
   if (projectId == null) {
     throw new Error('Open a project before loading character generation progress.')
@@ -1060,8 +666,46 @@ export async function getCharacterGenerationProgress(projectId) {
   return mapCharacterGenerationProgress(data)
 }
 
+export async function resumeCharacterGeneration(projectId, { retry_failed = false, style } = {}) {
+  if (projectId == null) {
+    throw new Error('Open a project before resuming character generation.')
+  }
+
+  const payload = {}
+  if (retry_failed) payload.retry_failed = true
+  if (style?.trim()) payload.style = style.trim().slice(0, 255)
+
+  const data = await requestAdstory(
+    `/api/adstory/projects/${projectId}/characters/resume-generation`,
+    {
+      method: 'POST',
+      payload,
+      fallbackMessage: 'Failed to resume character generation',
+    }
+  )
+
+  return mapCharacterGenerationProgress(data.progress ?? data)
+}
+
+export async function cancelCharacterGeneration(projectId) {
+  if (projectId == null) {
+    throw new Error('Open a project before cancelling character generation.')
+  }
+
+  const data = await requestAdstory(
+    `/api/adstory/projects/${projectId}/characters/cancel-generation`,
+    {
+      method: 'POST',
+      payload: {},
+      fallbackMessage: 'Failed to cancel character generation',
+    }
+  )
+
+  return mapCharacterGenerationProgress(data.progress ?? data)
+}
+
 export function mapEnvironmentGenerationProgress(data = {}) {
-  const apiEnvironments = data.environments ?? []
+  const apiEnvironments = mapAdstoryEnvironments(data.environments ?? [])
   const total = data.total ?? 0
   const completed = data.completed ?? 0
   const failed = data.failed ?? 0
@@ -1164,28 +808,56 @@ export async function resumeEnvironmentGeneration(projectId, { retry_failed = fa
   return mapEnvironmentGenerationProgress(data.progress ?? data)
 }
 
-export async function getSceneShots(projectId, sceneId) {
+export async function cancelEnvironmentGeneration(projectId) {
+  if (projectId == null) {
+    throw new Error('Open a project before cancelling environment generation.')
+  }
+
   const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/scenes/${sceneId}/shots`,
+    `/api/adstory/projects/${projectId}/environments/cancel-generation`,
     {
-      fallbackMessage: 'Failed to load scene shots',
+      method: 'POST',
+      payload: {},
+      fallbackMessage: 'Failed to cancel environment generation',
     }
   )
 
-  return (data.shots ?? []).map((shot, index) =>
-    mapAdstoryShot(shot, { sceneNumber: shot.scene_number, indexInScene: index })
-  )
+  return mapEnvironmentGenerationProgress(data.progress ?? data)
 }
 
 export async function getProjectSceneboard(projectId) {
-  const data = await requestAdstory(`/api/adstory/projects/${projectId}/sceneboard`, {
-    fallbackMessage: 'Failed to load sceneboard',
-  })
+  const key = String(projectId)
 
-  return {
-    scenes: mapSceneboardScenesFromApi(data.scenes ?? []),
-    summary: data.summary ?? null,
+  const inflight = sceneboardFetchInflight.get(key)
+  if (inflight) {
+    return inflight
   }
+
+  const coolUntil = sceneboardFetchCooldownUntil.get(key) ?? 0
+  if (Date.now() < coolUntil && sceneboardLastResult.has(key)) {
+    return sceneboardLastResult.get(key)
+  }
+
+  const request = (async () => {
+    try {
+      const data = await requestAdstory(`/api/adstory/projects/${projectId}/sceneboard`, {
+        fallbackMessage: 'Failed to load sceneboard',
+      })
+
+      const mapped = {
+        scenes: mapSceneboardScenesFromApi(data.scenes ?? []),
+        summary: data.summary ?? null,
+      }
+      sceneboardLastResult.set(key, mapped)
+      sceneboardFetchCooldownUntil.set(key, Date.now() + SCENEBOARD_FETCH_COOLDOWN_MS)
+      return mapped
+    } finally {
+      sceneboardFetchInflight.delete(key)
+    }
+  })()
+
+  sceneboardFetchInflight.set(key, request)
+  return request
 }
 
 function mapStoryboardSceneFromApi(scene = {}) {
@@ -1374,12 +1046,12 @@ export async function resumeStoryboardSceneShotImageGeneration(
   return mapStoryboardShotImageProgressResponse(data)
 }
 
-export async function startStoryboardSceneShotImageGeneration(projectId, sceneId) {
+export async function startStoryboardSceneShotImageGeneration(projectId, sceneId, { force = false } = {}) {
   const data = await requestAdstory(
     `/api/adstory/projects/${projectId}/storyboard/scenes/${sceneId}/generate-all-shot-images`,
     {
       method: 'POST',
-      payload: {},
+      payload: force ? { force: true } : {},
       fallbackMessage: 'Failed to start scene image generation',
     }
   )
@@ -1413,41 +1085,6 @@ export async function cancelStoryboardSceneShotImageGeneration(projectId, sceneI
   }
 }
 
-export async function getSceneSceneboard(projectId, sceneId) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/scenes/${sceneId}/sceneboard`,
-    { fallbackMessage: 'Failed to load scene storyboard' }
-  )
-
-  return mapSceneSceneboardResponse(data)
-}
-
-export async function startSceneShotGeneration(projectId, sceneId, { style, force = false } = {}) {
-  const payload = {}
-  if (style?.trim()) payload.style = style.trim().slice(0, 255)
-  if (force) payload.force = true
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/scenes/${sceneId}/generate-shots`,
-    {
-      method: 'POST',
-      payload,
-      fallbackMessage: 'Failed to start shot generation',
-    }
-  )
-
-  return mapSceneShotProgressResponse(data)
-}
-
-export async function getSceneShotGenerationProgress(projectId, sceneId) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/scenes/${sceneId}/shots/progress`,
-    { fallbackMessage: 'Failed to load shot generation progress' }
-  )
-
-  return mapSceneShotProgressResponse(data)
-}
-
 function mapSceneboardScenesFromApi(scenes = []) {
   return [...scenes]
     .sort(
@@ -1463,68 +1100,6 @@ function mapSceneboardScenesFromApi(scenes = []) {
       estimatedDuration: scene.estimated_duration ?? null,
       aiNotes: scene.ai_notes ?? '',
     }))
-}
-
-function mapSceneSceneboardResponse(data = {}) {
-  const sceneRaw = data.scene ?? {}
-  const scene = {
-    ...mapAdstoryScenes([sceneRaw])[0],
-    shotCount: sceneRaw.shot_count ?? sceneRaw.shots_count ?? (data.shots ?? []).length,
-    shotGenerationStatus:
-      data.shot_generation_status ?? sceneRaw.shot_generation_status ?? null,
-    shotGenerationError: sceneRaw.shot_generation_error ?? null,
-    estimatedDuration: data.estimated_duration ?? sceneRaw.estimated_duration ?? null,
-    aiNotes: data.ai_notes ?? sceneRaw.ai_notes ?? '',
-  }
-
-  const shots = (data.shots ?? []).map((shot, index) =>
-    mapAdstoryShot(shot, { sceneNumber: scene.scene_number, indexInScene: index })
-  )
-
-  return {
-    scene,
-    shots,
-    shotGenerationSummary: data.shot_generation_summary ?? null,
-  }
-}
-
-function mapSceneShotProgressResponse(data = {}) {
-  const sceneRaw = data.scene ?? null
-  const scene = sceneRaw
-    ? {
-        ...mapAdstoryScenes([sceneRaw])[0],
-        shotCount: sceneRaw.shot_count ?? sceneRaw.shots_count ?? 0,
-        shotGenerationStatus:
-          sceneRaw.shot_generation_status ?? data.status ?? null,
-        shotGenerationError: sceneRaw.shot_generation_error ?? null,
-      }
-    : null
-
-  const shots = (data.shots ?? []).map((shot, index) =>
-    mapAdstoryShot(shot, {
-      sceneNumber: scene?.scene_number ?? shot.scene_number,
-      indexInScene: index,
-    })
-  )
-
-  const total = data.total ?? data.total_shots ?? 0
-  const completed = data.completed ?? 0
-  const failed = data.failed ?? 0
-
-  return {
-    status: data.status ?? scene?.shotGenerationStatus ?? null,
-    total,
-    completed,
-    failed,
-    remaining: data.remaining ?? Math.max(0, total - completed - failed),
-    progress_percent: data.progress_percent ?? null,
-    estimated_remaining_seconds:
-      data.estimated_remaining ?? data.estimated_remaining_seconds ?? null,
-    currentShot: data.current_shot ?? null,
-    scene,
-    shots,
-    started: data.started ?? null,
-  }
 }
 
 export async function createProjectShot(projectId, shotData = {}) {
@@ -1564,132 +1139,6 @@ export async function saveProjectShotsBulk(projectId, shotGroups = [], scenes = 
   })
 
   return mapAdstoryShots(data.shots ?? [], scenes)
-}
-
-export async function saveProjectCore(projectId, data = {}) {
-  const payload = {}
-
-  if (data.title != null) {
-    payload.title = String(data.title).trim().slice(0, 150)
-  }
-
-  if (data.story != null) {
-    payload.story = String(data.story).trim()
-  }
-
-  if (data.script != null) {
-    payload.script = String(data.script).trim()
-  }
-
-  if (data.screenplay != null) {
-    payload.screenplay = String(data.screenplay).trim()
-  }
-
-  const style = data.style ?? data.visual_style
-  if (style != null && String(style).trim() !== '') {
-    payload.style = String(style).trim().slice(0, 100)
-  }
-
-  if (data.current_step != null) {
-    payload.current_step = String(data.current_step).trim()
-  }
-
-  if (data.status != null) {
-    payload.status = String(data.status).trim()
-  }
-
-  if (data.meta && typeof data.meta === 'object') {
-    payload.meta = data.meta
-  }
-
-  const response = await requestAdstory(`/api/adstory/projects/${projectId}/core`, {
-    method: 'PUT',
-    payload,
-    fallbackMessage: 'Failed to save project',
-  })
-
-  return mapAdstoryProjectToApiShape(response.project)
-}
-
-export async function generateScript({ story, style, project_id }) {
-  const trimmedStory = story.trim()
-  const validationError = validateStory(trimmedStory)
-  if (validationError) {
-    throw new Error(validationError)
-  }
-
-  const payload = { story: trimmedStory }
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 100)
-  }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/generate-script',
-    payload,
-    'Failed to generate script'
-  )
-
-  return {
-    script: data.script,
-    project: data.project ? mapAdstoryProjectToApiShape(data.project) : null,
-  }
-}
-
-export async function generateScreenplayFromScript({ script, style, project_id }) {
-  const trimmedScript = script.trim()
-  const validationError = validateScript(trimmedScript)
-  if (validationError) {
-    throw new Error(validationError)
-  }
-
-  const payload = { script: trimmedScript }
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 100)
-  }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/generate-screenplay',
-    payload,
-    'Failed to generate screenplay'
-  )
-
-  return {
-    screenplay: data.screenplay,
-    project: data.project ? mapAdstoryProjectToApiShape(data.project) : null,
-  }
-}
-
-export async function generateScenesFromScreenplay({ screenplay, style, project_id }) {
-  const trimmedScreenplay = screenplay.trim()
-  const validationError = validateScreenplay(trimmedScreenplay)
-  if (validationError) {
-    throw new Error(validationError)
-  }
-
-  const payload = { screenplay: trimmedScreenplay }
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 100)
-  }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/generate-scenes',
-    payload,
-    'Failed to generate scenes'
-  )
-
-  return {
-    scenes: mapAdstoryScenes(data.scenes ?? []),
-    project: data.project ? mapAdstoryProjectToApiShape(data.project) : null,
-  }
 }
 
 export async function generateShotsFromScenes({ scenes, style, project_id }) {
@@ -1771,31 +1220,6 @@ export async function generateShotImage(projectId, shotId, options = {}) {
     image: data.image ? mapAdstoryShotImage(data.image) : null,
     images: mapShotImageList(data.images ?? data.versions),
     versions: mapShotImageList(data.versions ?? data.images),
-  }
-}
-
-export async function generateProjectShotImages(projectId, payload = {}) {
-  if (projectId == null) {
-    throw new Error('Open a project before generating storyboard images.')
-  }
-
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/shots/generate-images`,
-    {
-      method: 'POST',
-      payload,
-      fallbackMessage: 'Failed to generate storyboard images',
-    }
-  )
-
-  const shots = Array.isArray(data.shots) ? data.shots.map((shot) => mapAdstoryShot(shot)) : []
-
-  return {
-    generated: data.generated ?? shots.length,
-    skipped: data.skipped ?? 0,
-    failed: data.failed ?? 0,
-    shots,
-    images: mapShotImageList(data.images),
   }
 }
 
@@ -2006,6 +1430,10 @@ export function mapAdstoryCharacter(character = {}, index = 0) {
     primaryAsset?.image_url ??
     ''
 
+  const costumeAsset =
+    assets.find((asset) => asset.asset_type === 'costume' && asset.image_url) ?? null
+  const costumeUrl = character.costume_image_url ?? costumeAsset?.image_url ?? ''
+
   return {
     id: character.id ?? `character-${index + 1}`,
     db_id: character.db_id ?? (isBackendCharacterId(character.id) ? Number(character.id) : null),
@@ -2026,6 +1454,7 @@ export function mapAdstoryCharacter(character = {}, index = 0) {
       (isAppearanceObject ? (appearance.clothing ?? '') : ''),
     importance: character.importance ?? '',
     image_url: imageUrl,
+    costume_image_url: costumeUrl,
     image_status:
       character.image_status ??
       character.imageStatus ??
@@ -2045,12 +1474,15 @@ export function mapAdstoryCharacters(apiCharacters = []) {
 export function mergeAdstoryCharacterUpdate(existing, result = {}) {
   const mapped = result.character ? mapAdstoryCharacter(result.character) : {}
   const image_url = result.image_url || mapped.image_url || existing.image_url || ''
+  const costume_image_url =
+    result.costume_image_url || mapped.costume_image_url || existing.costume_image_url || ''
 
   return {
     ...existing,
     ...mapped,
     id: mapped.id ?? existing.id,
     image_url,
+    costume_image_url,
     image_status: mapped.image_status ?? (image_url ? 'completed' : existing.image_status),
     prompt: mapped.prompt ?? result.prompt ?? existing.prompt,
     references:
@@ -2119,34 +1551,12 @@ export async function getProjectCharacters(projectId) {
   return mapAdstoryCharacters(data.characters ?? [])
 }
 
-export async function createProjectCharacter(projectId, characterData = {}) {
-  const data = await requestAdstory(`/api/adstory/projects/${projectId}/characters`, {
-    method: 'POST',
-    payload: characterData,
-    fallbackMessage: 'Failed to create character',
-  })
-
-  return data.character ? mapAdstoryCharacter(data.character) : null
-}
-
-export async function updateProjectCharacter(projectId, characterId, characterData = {}) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/characters/${characterId}`,
-    {
-      method: 'PUT',
-      payload: characterData,
-      fallbackMessage: 'Failed to update character',
-    }
-  )
-
-  return data.character ? mapAdstoryCharacter(data.character) : null
-}
-
 export async function deleteProjectCharacter(projectId, characterId) {
   await requestAdstory(`/api/adstory/projects/${projectId}/characters/${characterId}`, {
     method: 'DELETE',
     fallbackMessage: 'Failed to delete character',
   })
+  noteMaterialEdit(projectId)
 }
 
 export async function saveProjectCharactersBulk(projectId, characters = []) {
@@ -2158,36 +1568,8 @@ export async function saveProjectCharactersBulk(projectId, characters = []) {
     fallbackMessage: 'Failed to save characters',
   })
 
+  noteMaterialEdit(projectId)
   return mapAdstoryCharacters(data.characters ?? [])
-}
-
-export async function generateCharacterImage({ character, style, project_id }) {
-  const payload = {
-    character: mapCharacterToApiPayload(character),
-  }
-
-  if (isBackendCharacterId(character?.id)) {
-    payload.character_id = Number(character.id)
-  }
-
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 100)
-  }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/generate-character-image',
-    payload,
-    'Failed to generate character image'
-  )
-
-  return {
-    image_url: data.image_url ?? data.character?.image_url ?? '',
-    prompt: data.prompt ?? data.character?.prompt ?? '',
-    character: data.character,
-  }
 }
 
 export async function generateCharacterReferenceImage({
@@ -2227,29 +1609,6 @@ export async function generateCharacterReferenceImage({
     image_url: data.image_url ?? reference.image_url ?? '',
     reference,
     character: data.character,
-  }
-}
-
-export async function extractCharactersFromScreenplay({ screenplay, project_id }) {
-  const trimmedScreenplay = screenplay?.trim() ?? ''
-  if (!trimmedScreenplay) {
-    throw new Error('Screenplay is missing. Please go back and generate screenplay first.')
-  }
-
-  const payload = { screenplay: trimmedScreenplay }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/extract-characters',
-    payload,
-    'Failed to extract characters'
-  )
-
-  return {
-    characters: mapAdstoryCharacters(data.characters ?? []),
-    project: data.project ? mapAdstoryProjectToApiShape(data.project) : null,
   }
 }
 
@@ -2387,36 +1746,6 @@ export async function getProjectEnvironments(projectId) {
   return mapAdstoryEnvironments(data.environments ?? [])
 }
 
-export async function createProjectEnvironment(projectId, environmentData = {}) {
-  const data = await requestAdstory(`/api/adstory/projects/${projectId}/environments`, {
-    method: 'POST',
-    payload: environmentData,
-    fallbackMessage: 'Failed to create environment',
-  })
-
-  return data.environment ? mapAdstoryEnvironment(data.environment) : null
-}
-
-export async function updateProjectEnvironment(projectId, environmentId, environmentData = {}) {
-  const data = await requestAdstory(
-    `/api/adstory/projects/${projectId}/environments/${environmentId}`,
-    {
-      method: 'PUT',
-      payload: environmentData,
-      fallbackMessage: 'Failed to update environment',
-    }
-  )
-
-  return data.environment ? mapAdstoryEnvironment(data.environment) : null
-}
-
-export async function deleteProjectEnvironment(projectId, environmentId) {
-  await requestAdstory(`/api/adstory/projects/${projectId}/environments/${environmentId}`, {
-    method: 'DELETE',
-    fallbackMessage: 'Failed to delete environment',
-  })
-}
-
 export async function saveProjectEnvironmentsBulk(projectId, environments = []) {
   const data = await requestAdstory(`/api/adstory/projects/${projectId}/environments/bulk`, {
     method: 'PUT',
@@ -2426,54 +1755,7 @@ export async function saveProjectEnvironmentsBulk(projectId, environments = []) 
     fallbackMessage: 'Failed to save environments',
   })
 
+  noteMaterialEdit(projectId)
   return mapAdstoryEnvironments(data.environments ?? [])
 }
 
-export async function generateEnvironmentImage({ environment, style, project_id, environment_id }) {
-  const payload = {
-    environment: mapEnvironmentToApiPayload(environment),
-  }
-
-  const dbId = environment_id ?? getEnvironmentDbId(environment)
-  if (dbId != null) {
-    payload.environment_id = dbId
-  }
-
-  if (style?.trim()) {
-    payload.style = style.trim().slice(0, 100)
-  }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/generate-environment-image',
-    payload,
-    'Failed to generate environment image'
-  )
-
-  return {
-    image_url: data.image_url ?? data.environment?.image_url ?? '',
-    environment: data.environment,
-  }
-}
-
-export async function extractEnvironmentsFromScreenplay({ screenplay, project_id }) {
-  const trimmedScreenplay = screenplay?.trim() ?? ''
-  if (!trimmedScreenplay) {
-    throw new Error('Screenplay is missing. Please go back and generate screenplay first.')
-  }
-
-  const payload = { screenplay: trimmedScreenplay }
-  if (project_id != null) {
-    payload.project_id = project_id
-  }
-
-  const data = await postAdstory(
-    '/api/adstory/extract-environments',
-    payload,
-    'Failed to extract environments'
-  )
-
-  return mapAdstoryEnvironments(data.environments ?? [])
-}

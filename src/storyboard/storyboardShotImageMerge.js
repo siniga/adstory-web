@@ -27,9 +27,6 @@ function pickImageUrl(existing, incoming) {
   }
 
   if (hasImageUrl(existing)) {
-    console.log('[Storyboard] blocked image_url overwrite', {
-      shotId: existing?.apiId ?? existing?.id,
-    })
     return String(existing.image_url ?? existing.imageUrl).trim()
   }
 
@@ -39,6 +36,14 @@ function pickImageUrl(existing, incoming) {
 function pickImageStatus(existing, incoming, imageUrl) {
   const existingStatus = existing?.image_status ?? existing?.imageStatus ?? 'none'
   const incomingStatus = incoming?.image_status ?? incoming?.imageStatus
+
+  if (incomingStatus === 'failed') {
+    return 'failed'
+  }
+
+  if (imageUrl) {
+    return COMPLETED_IMAGE_STATUS
+  }
 
   if (
     existingStatus === COMPLETED_IMAGE_STATUS &&
@@ -52,15 +57,10 @@ function pickImageStatus(existing, incoming, imageUrl) {
     return COMPLETED_IMAGE_STATUS
   }
 
-  if (
-    incomingStatus === 'failed' ||
-    incomingStatus === 'generating' ||
-    incomingStatus === 'queued'
-  ) {
+  if (incomingStatus === 'generating' || incomingStatus === 'queued') {
     return incomingStatus
   }
 
-  if (imageUrl) return COMPLETED_IMAGE_STATUS
   if (incomingStatus) return incomingStatus
   return existingStatus
 }
@@ -92,7 +92,9 @@ export function mergeShotImageFields(existing, incoming) {
   return {
     ...existing,
     image_url: imageUrl,
+    imageUrl,
     image_status: imageStatus,
+    imageStatus,
     image_prompt: pickImagePrompt(existing, mapped),
     generation_error: pickGenerationError(existing, mapped),
     updated_at: mapped.updated_at ?? existing.updated_at,
@@ -162,8 +164,36 @@ export function patchStoryboardShotsFromProgress(existingShots = [], progressSho
   return mergeShotsPreservingImages(existingShots, progressShots, { imageOnly: true })
 }
 
+export function shotImageFieldsChanged(before = {}, after = {}) {
+  const beforeUrl = String(before.image_url ?? before.imageUrl ?? '').trim()
+  const afterUrl = String(after.image_url ?? after.imageUrl ?? '').trim()
+  if (beforeUrl !== afterUrl) return true
+
+  const beforeStatus = before.image_status ?? before.imageStatus ?? 'none'
+  const afterStatus = after.image_status ?? after.imageStatus ?? 'none'
+  if (beforeStatus !== afterStatus) return true
+
+  const beforeError = before.generation_error ?? before.generationError ?? null
+  const afterError = after.generation_error ?? after.generationError ?? null
+  return String(beforeError ?? '') !== String(afterError ?? '')
+}
+
+export function progressShotsNeedPatch(existingShots = [], progressShots = []) {
+  if (!progressShots.length) return false
+
+  const existingById = new Map(existingShots.map((shot) => [shotKey(shot), shot]))
+
+  return progressShots.some((incoming) => {
+    const mapped = normalizeIncomingShot(incoming)
+    const existing = existingById.get(shotKey(mapped))
+    if (!existing) return true
+    const merged = mergeShotImageFields(existing, mapped)
+    return shotImageFieldsChanged(existing, merged)
+  })
+}
+
 export function mergeSceneShotsFromLoader(existingShots = [], incomingShots = [], sceneId) {
-  if (!incomingShots.length) return incomingShots
+  if (!incomingShots.length) return existingShots.length ? existingShots : incomingShots
 
   const prevSceneId = existingShots[0]?.sceneApiId ?? existingShots[0]?.scene_api_id
   if (
@@ -174,5 +204,12 @@ export function mergeSceneShotsFromLoader(existingShots = [], incomingShots = []
     return incomingShots
   }
 
-  return mergeShotsPreservingImages(existingShots, incomingShots, { replaceAll: true })
+  // API scene load is authoritative — replace the scene shot list.
+  return incomingShots.map((incoming) => {
+    const mapped = normalizeIncomingShot(incoming)
+    const existing = existingShots.find(
+      (shot) => shotKey(shot) === shotKey(mapped)
+    )
+    return existing ? mergeShotPreservingImages(existing, mapped) : mapped
+  })
 }

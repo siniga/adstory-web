@@ -274,6 +274,25 @@
   cursor: zoom-in;
 }
 
+.costumePreviewBtn {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: none;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+.costumePreview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+
 .imageMedia {
   position: relative;
   overflow: hidden;

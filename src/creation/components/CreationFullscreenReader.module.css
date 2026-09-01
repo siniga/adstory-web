@@ -4,7 +4,7 @@
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: var(--studio-bg, #0a0a0a);
+  background: #0a0a0c;
   color: var(--studio-text, #fff);
   font-family: var(--studio-font, system-ui, sans-serif);
 }
@@ -15,9 +15,9 @@
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--studio-border, #262626);
-  background: var(--studio-surface, #141414);
+  padding: 14px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .headerLeft {
@@ -29,16 +29,17 @@
 
 .eyebrow {
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--studio-accent-bright, #a78bfa);
+  color: var(--write-accent, #a78bfa);
 }
 
 .title {
   margin: 0;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 650;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -46,7 +47,7 @@
 
 .subtitle {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--studio-text-muted, #9ca3af);
   line-height: 1.45;
 }
@@ -56,26 +57,57 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid var(--studio-border, #262626);
-  border-radius: 6px;
-  background: var(--studio-elevated, #1a1a1a);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--studio-text-muted, #9ca3af);
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .closeBtn:hover {
-  color: var(--studio-text, #fff);
-  background: var(--studio-elevated-hover, #242424);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .body {
   flex: 1;
   min-height: 0;
   display: flex;
-  flex-direction: column;
-  padding: 20px 24px 24px;
+  justify-content: center;
+  padding: 28px 24px 32px;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, var(--write-glow, rgba(124, 58, 237, 0.08)), transparent 70%);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(820px, 100%);
+  height: 100%;
+  min-height: 0;
+  border: 1px solid var(--write-sheet-border, rgba(255, 255, 255, 0.08));
+  border-radius: 18px;
+  background: var(--write-sheet, #16161f);
+  box-shadow: 0 28px 70px -30px rgba(0, 0, 0, 0.75);
+  overflow: hidden;
+}
+
+.editor {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 40px 48px;
+  border: none;
+  background: transparent;
+  color: var(--write-ink, #f4f4f5);
+  resize: none;
+  outline: none;
+}
+
+.editor::placeholder {
+  color: #71717a;
 }
 
 .scrollContent {
@@ -84,37 +116,42 @@
   overflow: auto;
 }
 
-.textareaLarge,
-.textareaBlock {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  padding: 20px 22px;
-  border: 1px solid var(--studio-border, #262626);
-  border-radius: var(--studio-radius-lg, 10px);
-  background: var(--studio-elevated, #1a1a1a);
-  color: var(--studio-text, #fff);
-  resize: none;
+.story {
+  --write-accent: #fbbf24;
+  --write-glow: rgba(251, 191, 36, 0.12);
+  --write-sheet: #16130f;
+  --write-sheet-border: rgba(251, 191, 36, 0.14);
+  --write-ink: #f5efe4;
 }
 
-.textareaLarge {
-  font-size: 17px;
-  font-family: inherit;
-  line-height: 1.7;
+.script {
+  --write-accent: #5eead4;
+  --write-glow: rgba(45, 212, 191, 0.1);
+  --write-sheet: #121614;
+  --write-sheet-border: rgba(94, 234, 212, 0.12);
+  --write-ink: #ecfdf5;
 }
 
-.textareaBlock {
-  font-size: 15px;
+.screenplay {
+  --write-accent: #c4b5fd;
+  --write-glow: rgba(167, 139, 250, 0.12);
+  --write-sheet: #14131a;
+  --write-sheet-border: rgba(167, 139, 250, 0.14);
+  --write-ink: #f5f3ff;
+}
+
+.storyEditor {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 19px;
+  line-height: 1.8;
+}
+
+.scriptEditor,
+.screenplayEditor {
   font-family: 'Courier New', Courier, monospace;
-  line-height: 1.75;
+  font-size: 16px;
+  line-height: 1.7;
   white-space: pre-wrap;
-}
-
-.textareaLarge:focus,
-.textareaBlock:focus {
-  outline: none;
-  border-color: var(--studio-accent-border, #7c3aed);
-  box-shadow: 0 0 0 3px var(--studio-accent-soft, rgba(124, 58, 237, 0.22));
 }
 
 .metaLine {

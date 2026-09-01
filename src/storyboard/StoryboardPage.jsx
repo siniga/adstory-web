@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTotalShotCount } from '../studio/data'
-import { isStoryboardComplete } from './storyboardStatus'
 import StoryboardGrid from './StoryboardGrid'
 import StoryboardShotSettingsModal from './StoryboardShotSettingsModal'
 import styles from './StoryboardPage.module.css'
@@ -18,7 +17,6 @@ export default function StoryboardPage({
   onGenerateStoryboardShotImage,
   onApproveStoryboardShotImage,
   onDeleteStoryboardShotImage,
-  onContinueToStudio,
   onBackToAssets,
 }) {
   const [generatingProject, setGeneratingProject] = useState(false)
@@ -27,7 +25,6 @@ export default function StoryboardPage({
   const [selectedShot, setSelectedShot] = useState(null)
 
   const shotCount = useMemo(() => getTotalShotCount(studioScenes), [studioScenes])
-  const storyboardComplete = isStoryboardComplete(studioScenes)
   const isGeneratingAny =
     generatingProject || Object.values(generatingSceneIds).some(Boolean)
 
@@ -139,19 +136,6 @@ export default function StoryboardPage({
             disabled={isGeneratingAny || !onGenerateProjectStoryboard}
           >
             {generatingProject ? 'Generating project…' : 'Generate Storyboard For Project'}
-          </button>
-          <button
-            type="button"
-            className={styles.continueBtn}
-            onClick={onContinueToStudio}
-            disabled={!storyboardComplete || !onContinueToStudio || isGeneratingAny}
-            title={
-              storyboardComplete
-                ? 'Open Studio'
-                : 'Generate storyboard images for every shot first'
-            }
-          >
-            Continue to Studio
           </button>
         </div>
       </header>

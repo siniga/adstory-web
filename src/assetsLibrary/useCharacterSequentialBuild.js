@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { mapApiCharacter } from '../services/api/mapApiProject'
-import * as screenlyApi from '../services/screenlyApi'
+import * as projectApi from '../services/projectApi'
 
 const BUILD_DELAY_MS = 300
 
@@ -49,7 +49,7 @@ export function useCharacterSequentialBuild({
     setActiveCharacterId(null)
 
     try {
-      const { done: isDone, data } = await screenlyApi.buildNextCharacter(projectId)
+      const { done: isDone, data } = await projectApi.buildNextCharacter(projectId)
       if (!mountedRef.current) return
 
       if (isDone) {
@@ -110,7 +110,7 @@ export function useCharacterSequentialBuild({
     setDone(false)
 
     try {
-      const { data } = await screenlyApi.startCharacterBuild(projectId)
+      const { data } = await projectApi.startCharacterBuild(projectId)
       if (!mountedRef.current) return
 
       setHasSession(true)
@@ -202,7 +202,7 @@ export function useCharacterSequentialBuild({
     setError(null)
 
     try {
-      const { done: isDone, data } = await screenlyApi.buildNextCharacter(projectId)
+      const { done: isDone, data } = await projectApi.buildNextCharacter(projectId)
       if (!mountedRef.current) return null
 
       if (isDone) {

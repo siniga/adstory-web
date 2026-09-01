@@ -3,19 +3,13 @@ import { BRAND } from '../config/branding'
 import { toUserError } from '../utils/sanitizeUserErrorMessage'
 import styles from './LoginPage.module.css'
 
-export default function LoginPage({ onLogin, onRegister, error, onClearError }) {
-  const [mode, setMode] = useState('login')
+export default function LoginPage({ mode = 'login', onLogin, onRegister, error, onClearError }) {
+  const isRegister = mode === 'register'
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-
-  const switchMode = () => {
-    onClearError?.()
-    setShowPassword(false)
-    setMode((current) => (current === 'login' ? 'register' : 'login'))
-  }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -23,10 +17,10 @@ export default function LoginPage({ onLogin, onRegister, error, onClearError }) 
     onClearError?.()
 
     try {
-      if (mode === 'login') {
-        await onLogin({ email, password })
-      } else {
+      if (isRegister) {
         await onRegister({ name, email, password })
+      } else {
+        await onLogin({ email, password })
       }
     } catch {
       // Error is handled by parent auth state.
@@ -45,20 +39,15 @@ export default function LoginPage({ onLogin, onRegister, error, onClearError }) 
           <span className={styles.brandName}>{BRAND.name}</span>
         </div>
 
-        <h1 className={styles.title}>{mode === 'login' ? 'Sign in' : 'Create account'}</h1>
+        <h1 className={styles.title}>{isRegister ? 'Create account' : 'Sign in'}</h1>
         <p className={styles.subtitle}>
-          {mode === 'login'
-            ? 'Direct your story. Log in to access your projects and studio.'
-            : 'Create an account to start directing with Adstory.'}
+          {isRegister
+            ? 'Create an account to start directing your story.'
+            : 'Direct your story. Log in to access your projects and studio.'}
         </p>
-        {mode === 'login' && (
-          <p className={styles.demoHint}>
-            Demo: demo@screenly.test / password
-          </p>
-        )}
 
         <form className={styles.form} onSubmit={handleSubmit}>
-          {mode === 'register' && (
+          {isRegister ? (
             <label className={styles.field}>
               <span className={styles.label}>Name</span>
               <input
@@ -70,7 +59,7 @@ export default function LoginPage({ onLogin, onRegister, error, onClearError }) 
                 autoComplete="name"
               />
             </label>
-          )}
+          ) : null}
 
           <label className={styles.field}>
             <span className={styles.label}>Email</span>
@@ -94,7 +83,7 @@ export default function LoginPage({ onLogin, onRegister, error, onClearError }) 
                 onChange={(event) => setPassword(event.target.value)}
                 required
                 minLength={8}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
               />
               <button
                 type="button"
@@ -125,15 +114,9 @@ export default function LoginPage({ onLogin, onRegister, error, onClearError }) 
           {displayError ? <p className={styles.error}>{displayError}</p> : null}
 
           <button type="submit" className={styles.submitBtn} disabled={submitting}>
-            {submitting ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+            {submitting ? 'Please wait…' : isRegister ? 'Create account' : 'Sign in'}
           </button>
         </form>
-
-        <button type="button" className={styles.switchMode} onClick={switchMode}>
-          {mode === 'login'
-            ? 'Need an account? Create one'
-            : 'Already have an account? Sign in'}
-        </button>
       </div>
     </div>
   )

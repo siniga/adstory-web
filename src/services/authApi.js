@@ -1,41 +1,16 @@
-import { API_URL } from '../config/api'
-import { clearAuth, loadAuthToken, saveAuth } from '../auth/authStorage'
-
-function authHeaders() {
-  const token = loadAuthToken()
-  const headers = {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-  }
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-
-  return headers
-}
+import { clearAuth, saveAuth } from '../auth/authStorage'
+import { apiRequest } from './api'
 
 async function requestAuth(endpoint, { method = 'GET', body, fallbackMessage } = {}) {
-  const res = await fetch(`${API_URL}${endpoint}`, {
+  return apiRequest(endpoint, {
     method,
-    headers: authHeaders(),
-    body: body != null ? JSON.stringify(body) : undefined,
+    body,
+    fallbackMessage,
+    auth: true,
+    sanitize: false,
+    allowEmptyJson: true,
+    requireSuccess: false,
   })
-
-  let data = null
-  try {
-    data = await res.json()
-  } catch {
-    if (!res.ok) {
-      throw new Error(fallbackMessage)
-    }
-  }
-
-  if (!res.ok) {
-    throw new Error(data?.message ?? fallbackMessage)
-  }
-
-  return data
 }
 
 export async function login({ email, password }) {

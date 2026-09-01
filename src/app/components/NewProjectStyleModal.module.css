@@ -1,0 +1,465 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.panel {
+  width: min(640px, 100%);
+  max-height: min(90vh, 760px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--studio-border);
+  border-radius: var(--studio-radius-lg);
+  background: var(--studio-surface);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.panelWide {
+  width: min(720px, 100%);
+}
+
+.header {
+  flex-shrink: 0;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--studio-border);
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--studio-accent-bright);
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--studio-text);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--studio-text-muted);
+}
+
+.stepBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--studio-text-muted);
+}
+
+.stepItemActive {
+  color: var(--studio-text);
+}
+
+.stepItemDone {
+  color: var(--studio-accent-bright);
+}
+
+.stepDot {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--studio-border);
+  background: var(--studio-elevated);
+  font-size: 11px;
+}
+
+.stepItemActive .stepDot {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent);
+  color: #fff;
+}
+
+.stepItemDone .stepDot {
+  border-color: var(--studio-accent);
+  color: var(--studio-accent-bright);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 24px;
+}
+
+.styleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.styleCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.styleCard:hover:not(:disabled) {
+  border-color: var(--studio-border-strong);
+  color: var(--studio-text);
+  background: var(--studio-elevated-hover);
+}
+
+.styleCardSelected {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+  color: var(--studio-text);
+}
+
+.styleCard:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.styleSwatch {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.styleLabel {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--studio-border);
+}
+
+.cancelBtn,
+.continueBtn {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--studio-radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.cancelBtn {
+  border: 1px solid var(--studio-border);
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+}
+
+.cancelBtn:hover:not(:disabled) {
+  color: var(--studio-text);
+  border-color: var(--studio-accent);
+}
+
+.continueBtn {
+  border: none;
+  background: var(--studio-accent);
+  color: #fff;
+}
+
+.continueBtn:hover:not(:disabled) {
+  opacity: 0.94;
+}
+
+.cancelBtn:disabled,
+.continueBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--studio-text);
+}
+
+.fieldHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.charCount,
+.charCountWarn {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  min-height: 1.3em;
+}
+
+.charCount {
+  color: var(--studio-text-muted);
+}
+
+.charCountWarn {
+  color: #fca5a5;
+}
+
+.bodyPinned {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.bodyPinned .startStep {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bodyPinned .startStep > .field {
+  flex-shrink: 0;
+}
+
+.pasteField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+
+.pasteField .textarea {
+  flex: 1;
+  min-height: 120px;
+  resize: none;
+}
+
+.bodyPinned .sceneList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.fieldHint {
+  font-size: 11px;
+  color: var(--studio-text-muted);
+}
+
+.fieldError {
+  margin: 0;
+  font-size: 12px;
+  color: #fca5a5;
+}
+
+.select {
+  width: 100%;
+  height: 42px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  background-color: var(--studio-elevated);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%239ca3af' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  color: var(--studio-text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.select:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.select option {
+  background: var(--studio-surface);
+  color: var(--studio-text);
+}
+
+.input,
+.textarea,
+.textareaCompact {
+  width: 100%;
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  background: var(--studio-elevated);
+  color: var(--studio-text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.input {
+  height: 42px;
+  padding: 0 12px;
+}
+
+.textarea,
+.textareaCompact {
+  padding: 10px 12px;
+  min-height: 84px;
+}
+
+.textarea {
+  min-height: 160px;
+}
+
+.input:focus,
+.textarea:focus,
+.textareaCompact:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--studio-accent);
+}
+
+.startStep {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.startGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.startCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  background: var(--studio-elevated);
+  color: var(--studio-text-muted);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.startCard:hover:not(:disabled) {
+  border-color: var(--studio-border-strong);
+  color: var(--studio-text);
+}
+
+.startCardSelected {
+  border-color: var(--studio-accent);
+  background: var(--studio-accent-soft);
+  color: var(--studio-text);
+}
+
+.startCardTitle {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.startCardDesc {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.sceneList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sceneList .fieldHeader .charCount,
+.sceneList .fieldHeader .charCountWarn {
+  white-space: normal;
+  text-align: right;
+}
+
+.sceneRow {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  background: var(--studio-elevated);
+}
+
+.sceneRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sceneIndex {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--studio-text);
+}
+
+.sceneRemove,
+.addSceneBtn {
+  border: none;
+  background: none;
+  color: var(--studio-accent-bright);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.addSceneBtn {
+  align-self: flex-start;
+}
+
+@media (max-width: 560px) {
+  .styleGrid,
+  .startGrid {
+    grid-template-columns: 1fr;
+  }
+}

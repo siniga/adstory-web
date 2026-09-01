@@ -112,7 +112,7 @@ export function projectHasShotAssets(project) {
 export function isStoryAreaComplete(project) {
   const status = project.status ?? {}
 
-  if (!project.story?.trim() || !project.script?.trim() || !project.screenplay?.trim()) {
+  if (!project.story?.trim() || !project.screenplay?.trim()) {
     return false
   }
 

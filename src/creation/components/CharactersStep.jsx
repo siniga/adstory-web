@@ -1,28 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import DebugPanel from '../../components/DebugPanel'
 import {
   deleteProjectCharacter,
-  generateCharacterImage,
   isBackendCharacterId,
+  mapAdstoryCharacters,
   mergeAdstoryCharacterUpdate,
 } from '../../services/adstoryApi'
-import { getCharacterImageUrl, resolveMediaUrl } from '../../utils/resolveMediaUrl'
+import * as projectApi from '../../services/projectApi'
+import { getCharacterImageUrl, getCostumeImageUrl, resolveMediaUrl } from '../../utils/resolveMediaUrl'
 import { formatUserFriendlyError } from '../../utils/userFriendlyErrors'
 import ErrorModal from '../../app/components/ErrorModal'
 import ImagePreviewModal from '../../app/components/ImagePreviewModal'
 import CharacterSheetModal from './CharacterSheetModal'
-import AiGenerationProgress from './AiGenerationProgress'
-import useCharacterGeneration from '../hooks/useCharacterGeneration'
-import { isGenerationInProgress, isGenerationTerminal } from '../aiGenerationStatus'
-import {
-  allCharactersPortraitComplete,
-  areCharactersGenerationSettled,
-  getCharacterDisplayStatus,
-  hasProjectCharacters,
-  logCharactersUpdate,
-  mergeCharacterListsPreservingPortraits,
-  normalizeCharacterList,
-} from '../characterGenerationStatus'
+import { getCharacterDisplayStatus } from '../characterGenerationStatus'
 import { useProjectStore } from '../../project/ProjectStoreContext'
 import { getWorkspaceQuestion } from '../creationData'
 import fieldStyles from './StepLayout.module.css'
@@ -116,13 +107,16 @@ function CharacterInspector({
   characterIndex,
   total,
   isGenerating,
+  isGeneratingCostume,
   isGenerateAllRunning,
   isDeleting,
   rowError,
   onChange,
   onDelete,
   onGenerate,
+  onGenerateCostume,
   onOpenSheet,
+  onPreviewImage,
 }) {
   if (!character) {
     return (
@@ -133,8 +127,10 @@ function CharacterInspector({
   }
 
   const hasImage = characterHasImage(character)
+  const costumeUrl = getCostumeImageUrl(character)
   const buttonLabel = isGenerating ? 'Generating…' : hasImage ? 'Regenerate' : 'Generate'
-  const buttonDisabled = isGenerating || isGenerateAllRunning || isDeleting
+  const buttonDisabled = isGenerating || isGeneratingCostume || isGenerateAllRunning || isDeleting
+  const costumeLabel = isGeneratingCostume ? 'Generating…' : costumeUrl ? 'Regenerate costume sheet' : 'Generate costume sheet'
 
   return (
     <aside className={fieldStyles.inspector}>
@@ -177,11 +173,26 @@ function CharacterInspector({
         </div>
         <div className={fieldStyles.sceneField}>
           <label className={fieldStyles.sceneFieldLabel} htmlFor={`char-${character.id}-wardrobe`}>Wardrobe</label>
-          <input id={`char-${character.id}-wardrobe`} className={fieldStyles.sceneFieldInput} value={character.wardrobe ?? ''} onChange={(e) => onChange({ wardrobe: e.target.value })} />
+          <textarea id={`char-${character.id}-wardrobe`} className={fieldStyles.sceneFieldTextarea} value={character.wardrobe ?? ''} onChange={(e) => onChange({ wardrobe: e.target.value })} rows={2} />
+        </div>
+        <div className={fieldStyles.sceneField}>
+          <span className={fieldStyles.sceneFieldLabel}>Costume sheet</span>
+          {costumeUrl ? (
+            <button
+              type="button"
+              className={styles.costumePreviewBtn}
+              onClick={() => onPreviewImage?.({ imageUrl: costumeUrl, title: `${character.name} costume` })}
+            >
+              <img src={costumeUrl} alt={`${character.name} costume sheet`} className={styles.costumePreview} />
+            </button>
+          ) : (
+            <p className={fieldStyles.fieldHint}>Full-body sheet so storyboard shots keep the same clothes.</p>
+          )}
         </div>
         {rowError ? <p className={styles.rowError} role="alert">{rowError}</p> : null}
         <div className={fieldStyles.characterActionsPrimary}>
           <button type="button" className={styles.generateBtn} onClick={() => onGenerate(character)} disabled={buttonDisabled}>{buttonLabel}</button>
+          <button type="button" className={fieldStyles.secondaryBtnActive} onClick={() => onGenerateCostume(character)} disabled={buttonDisabled}>{costumeLabel}</button>
           <button type="button" className={fieldStyles.secondaryBtnActive} onClick={() => onOpenSheet(character)}>Character sheet</button>
           <button type="button" className={styles.deleteBtn} onClick={() => onDelete(character)} disabled={buttonDisabled}>{isDeleting ? 'Deleting…' : 'Delete'}</button>
         </div>
@@ -190,17 +201,15 @@ function CharacterInspector({
   )
 }
 
+const extractInflight = new Map()
+
 export default function CharactersStep({
   projectId,
   style,
-  fallbackCharacters = [],
-  characterGenerationStatus = null,
-  characterGenerationStartedAt = null,
-  onGenerationMetaChange,
   onBack,
-  onContinueToEnvironments,
+  onNext,
+  onActionChange,
   onSave,
-  loading = false,
   saveStatus = 'idle',
   saveError,
 }) {
@@ -208,21 +217,18 @@ export default function CharactersStep({
   const {
     characters,
     mergeCharacters,
-    loadProject,
     loadCharacters,
   } = useProjectStore()
 
-  console.log('Character page rendering:', characters.length)
-
-  const charactersLoadKeyRef = useRef(null)
-  const [stepDataLoading, setStepDataLoading] = useState(true)
+  const [extracting, setExtracting] = useState(false)
+  const [stepDataLoading, setStepDataLoading] = useState(() => characters.length === 0)
   const [generatingIds, setGeneratingIds] = useState(() => new Set())
+  const [generatingCostumeIds, setGeneratingCostumeIds] = useState(() => new Set())
+  const [requestTriggered, setRequestTriggered] = useState(false)
   const [deletingIds, setDeletingIds] = useState(() => new Set())
   const [generatingAll, setGeneratingAll] = useState(false)
-  const [generateAllProgress, setGenerateAllProgress] = useState(null)
   const [rowErrors, setRowErrors] = useState({})
   const [actionError, setActionError] = useState(null)
-  const [continuing, setContinuing] = useState(false)
   const [sheetCharacterId, setSheetCharacterId] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [previewImage, setPreviewImage] = useState(null)
@@ -230,30 +236,76 @@ export default function CharactersStep({
   const saveStatusLabel =
     saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : null
 
-  const combinedLoading = loading || stepDataLoading
+  const combinedLoading = stepDataLoading && characters.length === 0
+
+  useEffect(() => {
+    if (characters.length > 0) {
+      setStepDataLoading(false)
+    }
+  }, [characters.length])
 
   useEffect(() => {
     if (!projectId) return undefined
 
-    const loadKey = `${projectId}:characters`
-    if (charactersLoadKeyRef.current === loadKey) {
-      return undefined
-    }
-    charactersLoadKeyRef.current = loadKey
-
     let cancelled = false
-    setStepDataLoading(true)
+    setRequestTriggered(true)
+    if (characters.length === 0) {
+      setStepDataLoading(true)
+    }
 
-    loadCharacters(projectId)
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setStepDataLoading(false)
-      })
+    const loadAndExtract = async () => {
+      try {
+        const loaded = await loadCharacters(projectId)
+        if (cancelled) return
+
+        if ((loaded?.length ?? 0) > 0) {
+          return
+        }
+
+        setExtracting(true)
+        const key = String(projectId)
+        let pending = extractInflight.get(key)
+        if (!pending) {
+          pending = projectApi
+            .generateCharacters({
+              project_id: projectId,
+              style,
+            })
+            .finally(() => {
+              extractInflight.delete(key)
+            })
+          extractInflight.set(key, pending)
+        }
+
+        const result = await pending
+        if (cancelled) return
+
+        const next = mapAdstoryCharacters(result.characters ?? [])
+        if (next.length > 0) {
+          mergeCharacters(next)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setActionError(
+            formatUserFriendlyError(
+              err instanceof Error ? err.message : 'Failed to extract characters'
+            ).message
+          )
+        }
+      } finally {
+        if (!cancelled) {
+          setExtracting(false)
+          setStepDataLoading(false)
+        }
+      }
+    }
+
+    loadAndExtract()
 
     return () => {
       cancelled = true
     }
-  }, [loadCharacters, projectId])
+  }, [loadCharacters, mergeCharacters, projectId, style])
 
   const patchCharacters = useCallback(
     (updater) => {
@@ -263,51 +315,8 @@ export default function CharactersStep({
     [characters, mergeCharacters]
   )
 
-  const loadProjectOnComplete = useCallback(
-    () => loadProject(projectId, { force: true, reason: 'characters generation complete' }),
-    [loadProject, projectId]
-  )
-
-  const [generationErrorModal, setGenerationErrorModal] = useState(null)
-
-  const handleGenerationError = useCallback((formatted) => {
-    setGenerationErrorModal(formatted)
-  }, [])
-
-  const {
-    progress,
-    monitoring,
-    isStuck,
-    resuming,
-    handleResumeGeneration,
-  } = useCharacterGeneration({
-    enabled: Boolean(projectId) && !combinedLoading,
-    projectId,
-    initialStatus: characterGenerationStatus,
-    initialStartedAt: characterGenerationStartedAt,
-    visualStyle: style,
-    characters,
-    fallbackCharacters,
-    loadProjectOnComplete,
-    onCharactersChange: mergeCharacters,
-    onGenerationMetaChange,
-    onError: handleGenerationError,
-  })
-
   const generationActive =
-    !areCharactersGenerationSettled(characters) &&
-    (monitoring ||
-      Boolean(resuming) ||
-      isGenerationInProgress(characterGenerationStatus) ||
-      isGenerationInProgress(progress?.status))
-
-  const charactersReady =
-    hasProjectCharacters(characters) &&
-    !generationActive &&
-    (allCharactersPortraitComplete(characters) ||
-      areCharactersGenerationSettled(characters) ||
-      isGenerationTerminal(characterGenerationStatus) ||
-      isGenerationTerminal(progress?.status))
+    generatingAll || generatingIds.size > 0 || generatingCostumeIds.size > 0
 
   useEffect(() => {
     if (!selectedId && characters.length) setSelectedId(characters[0].id)
@@ -330,17 +339,38 @@ export default function CharactersStep({
       })
 
       try {
-        const result = await generateCharacterImage({
-          character,
-          style,
+        const characterId = character.db_id ?? character.id
+        const result = await projectApi.generateCharacterImage({
           project_id: projectId,
+          character_id: characterId,
+          character,
+          force: characterHasImage(character),
         })
 
+        let merged = mergeAdstoryCharacterUpdate(character, result)
         patchCharacters((current) =>
-          current.map((item) =>
-            String(item.id) === id ? mergeAdstoryCharacterUpdate(item, result) : item
-          )
+          current.map((item) => (String(item.id) === id ? merged : item))
         )
+
+        try {
+          const costume = await projectApi.generateCharacterCostume({
+            project_id: projectId,
+            character_id: characterId,
+            character: merged,
+            force: Boolean(merged.costume_image_url) || characterHasImage(character),
+          })
+          merged = mergeAdstoryCharacterUpdate(merged, costume)
+          patchCharacters((current) =>
+            current.map((item) => (String(item.id) === id ? merged : item))
+          )
+        } catch (costumeErr) {
+          setRowErrors((prev) => ({
+            ...prev,
+            [id]: formatUserFriendlyError(
+              costumeErr instanceof Error ? costumeErr.message : 'Failed to generate costume sheet'
+            ).message,
+          }))
+        }
       } catch (err) {
         const message = formatUserFriendlyError(
           err instanceof Error ? err.message : 'Failed to generate character image'
@@ -355,7 +385,7 @@ export default function CharactersStep({
         })
       }
     },
-    [projectId, style, patchCharacters]
+    [projectId, patchCharacters]
   )
 
   const handleGenerateOne = useCallback(
@@ -366,6 +396,54 @@ export default function CharactersStep({
       await generateOne(character)
     },
     [generateOne, generatingAll, generatingIds]
+  )
+
+  const handleGenerateCostume = useCallback(
+    async (character) => {
+      if (generatingAll) return
+      const id = String(character.id)
+      if (generatingIds.has(id) || generatingCostumeIds.has(id)) return
+      if (!isBackendCharacterId(character.id) && !isBackendCharacterId(character.db_id)) {
+        setRowErrors((prev) => ({
+          ...prev,
+          [id]: 'Save this character before generating a costume sheet.',
+        }))
+        return
+      }
+
+      setGeneratingCostumeIds((prev) => new Set(prev).add(id))
+      setRowErrors((prev) => {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      })
+
+      try {
+        const result = await projectApi.generateCharacterCostume({
+          project_id: projectId,
+          character_id: character.db_id ?? character.id,
+          character,
+          force: Boolean(character.costume_image_url),
+        })
+        patchCharacters((current) =>
+          current.map((item) =>
+            String(item.id) === id ? mergeAdstoryCharacterUpdate(item, result) : item
+          )
+        )
+      } catch (err) {
+        const message = formatUserFriendlyError(
+          err instanceof Error ? err.message : 'Failed to generate costume sheet'
+        ).message
+        setRowErrors((prev) => ({ ...prev, [id]: message }))
+      } finally {
+        setGeneratingCostumeIds((prev) => {
+          const next = new Set(prev)
+          next.delete(id)
+          return next
+        })
+      }
+    },
+    [generatingAll, generatingIds, generatingCostumeIds, projectId, patchCharacters]
   )
 
   const handleGenerateAll = useCallback(async () => {
@@ -379,7 +457,6 @@ export default function CharactersStep({
 
     try {
       for (let index = 0; index < pending.length; index += 1) {
-        setGenerateAllProgress({ current: index + 1, total: pending.length })
         try {
           await generateOne(pending[index])
         } catch {
@@ -388,7 +465,6 @@ export default function CharactersStep({
       }
     } finally {
       setGeneratingAll(false)
-      setGenerateAllProgress(null)
     }
   }, [generateOne, generationActive, generatingAll, generatingIds, characters])
 
@@ -442,19 +518,25 @@ export default function CharactersStep({
     navigate(-1)
   }, [navigate, onBack])
 
-  const handleContinue = useCallback(async () => {
-    setContinuing(true)
-    setActionError(null)
-
-    try {
-      await onContinueToEnvironments?.()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to continue'
-      setActionError(message)
-    } finally {
-      setContinuing(false)
+  useEffect(() => {
+    if (!onActionChange) {
+      return undefined
     }
-  }, [onContinueToEnvironments])
+
+    onActionChange({
+      label: 'Continue to environments',
+      generatingLabel: extracting ? 'Extracting characters…' : 'Continue to environments',
+      disabled: extracting || isSaving || characters.length === 0,
+      onClick: () => onNext?.(),
+      secondaryAction: {
+        label: 'Back to Sequences',
+        onClick: handleBack,
+        disabled: extracting || isSaving,
+      },
+    })
+
+    return () => onActionChange(null)
+  }, [characters.length, extracting, handleBack, isSaving, onActionChange, onNext])
 
   const localModalError = useMemo(
     () => (actionError ? formatUserFriendlyError(actionError) : null),
@@ -487,6 +569,16 @@ export default function CharactersStep({
   }, [])
 
   const listBody = useMemo(() => {
+    if (combinedLoading || extracting) {
+      return (
+        <p className={styles.generationStatus} role="status">
+          {extracting
+            ? 'Extracting characters from your screenplay…'
+            : 'Loading saved characters...'}
+        </p>
+      )
+    }
+
     if (!characterCount) {
       return (
         <div className={styles.stateBlock}>
@@ -513,7 +605,7 @@ export default function CharactersStep({
         })}
       </div>
     )
-  }, [characterCount, generatingIds, handlePreviewImage, characters, selectedId])
+  }, [characterCount, combinedLoading, extracting, generatingIds, handlePreviewImage, characters, selectedId])
 
   return (
     <div className={styles.page}>
@@ -523,8 +615,13 @@ export default function CharactersStep({
             <h1 className={styles.title}>Characters</h1>
             <p className={fieldStyles.question}>{getWorkspaceQuestion('characters')}</p>
             <p className={styles.subtitle}>
-              {characterCount} cast members
-              {generationActive ? ' · Generation in progress' : ' · Generate portraits when you are ready.'}
+              {extracting
+                ? 'Extracting the cast from your screenplay…'
+                : `${characterCount} cast members${
+                    generationActive
+                      ? ' · Generation in progress'
+                      : ' · Review the cast, then generate portraits when you are ready.'
+                  }`}
             </p>
           </div>
 
@@ -557,24 +654,6 @@ export default function CharactersStep({
           </div>
         </header>
 
-        {combinedLoading && !characterCount ? (
-          <p className={styles.generationStatus} role="status">
-            Loading saved characters...
-          </p>
-        ) : null}
-        <AiGenerationProgress
-          type="characters"
-          progress={generationActive ? progress : null}
-          startedAt={characterGenerationStartedAt}
-          isStuck={isStuck}
-          resuming={resuming}
-          onResume={handleResumeGeneration}
-        />
-        {generateAllProgress ? (
-          <p className={styles.generationStatus} role="status">
-            Generating character {generateAllProgress.current} of {generateAllProgress.total}...
-          </p>
-        ) : null}
         {saveError ? (
           <div className={styles.inlineErrorBox} role="alert">
             {saveError}
@@ -588,6 +667,9 @@ export default function CharactersStep({
             characterIndex={selectedIndex >= 0 ? selectedIndex : 0}
             total={characterCount}
             isGenerating={selectedCharacter ? generatingIds.has(String(selectedCharacter.id)) : false}
+            isGeneratingCostume={
+              selectedCharacter ? generatingCostumeIds.has(String(selectedCharacter.id)) : false
+            }
             isGenerateAllRunning={generatingAll}
             isDeleting={selectedCharacter ? deletingIds.has(String(selectedCharacter.id)) : false}
             rowError={selectedCharacter ? rowErrors[String(selectedCharacter.id)] : null}
@@ -597,31 +679,18 @@ export default function CharactersStep({
             }}
             onDelete={handleDelete}
             onGenerate={handleGenerateOne}
+            onGenerateCostume={handleGenerateCostume}
             onOpenSheet={handleOpenSheet}
+            onPreviewImage={setPreviewImage}
           />
         </div>
       </div>
 
       <footer className={styles.footer}>
         <button type="button" className={styles.footerBackBtn} onClick={handleBack}>
-          Back to Shots
-        </button>
-        <button
-          type="button"
-          className={`${styles.footerContinueBtn} ${charactersReady ? styles.footerContinueBtnActive : ''}`}
-          onClick={handleContinue}
-          disabled={!charactersReady || continuing || isSaving || generationActive}
-        >
-          {continuing ? 'Continuing...' : 'Continue to Environments'}
+          Back to Sequences
         </button>
       </footer>
-
-      <ErrorModal
-        open={Boolean(generationErrorModal)}
-        title={generationErrorModal?.title ?? 'Something went wrong'}
-        message={generationErrorModal?.message ?? ''}
-        onClose={() => setGenerationErrorModal(null)}
-      />
 
       <ErrorModal
         open={Boolean(localModalError)}
@@ -645,6 +714,13 @@ export default function CharactersStep({
         imageUrl={previewImage?.imageUrl}
         title={previewImage?.title}
         onClose={() => setPreviewImage(null)}
+      />
+
+      <DebugPanel
+        pageName="Characters"
+        loading={combinedLoading}
+        dataCount={characters.length}
+        requestTriggered={requestTriggered}
       />
     </div>
   )

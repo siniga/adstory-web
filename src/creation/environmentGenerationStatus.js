@@ -106,6 +106,11 @@ function normalizeEnvironmentImageStatus(rawStatus, imageUrl) {
     return ENVIRONMENT_IMAGE_STATUS.COMPLETED
   }
 
+  // Do not treat "completed" without an image URL as done — that hides missing media.
+  if (aliased === ENVIRONMENT_IMAGE_STATUS.COMPLETED && !imageUrl) {
+    return ENVIRONMENT_IMAGE_STATUS.PENDING
+  }
+
   if (!aliased) {
     return imageUrl ? ENVIRONMENT_IMAGE_STATUS.COMPLETED : ENVIRONMENT_IMAGE_STATUS.PENDING
   }
@@ -176,9 +181,12 @@ export function mergeEnvironmentRecord(existing, incoming) {
 
   const existingRank = environmentImageStatusRank(existing.image_status)
   const incomingRank = environmentImageStatusRank(incoming.image_status)
+  const existingHasImage = Boolean(String(existing.image_url ?? '').trim())
+  const incomingHasImage = Boolean(String(incoming.image_url ?? '').trim())
 
   if (
     existing.image_status === ENVIRONMENT_IMAGE_STATUS.COMPLETED &&
+    existingHasImage &&
     incomingRank >= 0 &&
     incomingRank < existingRank
   ) {
@@ -187,7 +195,7 @@ export function mergeEnvironmentRecord(existing, incoming) {
     }
   }
 
-  if (existing.image_url && !incoming.image_url) {
+  if (existingHasImage && !incomingHasImage) {
     console.log('[Blocked overwrite] environment image_url preserved', {
       name: existing.name ?? existing.id,
     })
@@ -197,7 +205,7 @@ export function mergeEnvironmentRecord(existing, incoming) {
     existing.image_status,
     incoming.image_status
   )
-  const incomingAuthoritative = incomingRank >= existingRank
+  const incomingAuthoritative = incomingRank > existingRank || (incomingRank === existingRank && incomingHasImage)
   const base = incomingAuthoritative ? incoming : existing
   const supplemental = incomingAuthoritative ? existing : incoming
 
@@ -205,11 +213,13 @@ export function mergeEnvironmentRecord(existing, incoming) {
     ...supplemental,
     ...base,
     id: existing.id ?? incoming.id,
-    db_id: existing.db_id ?? incoming.db_id,
+    db_id: existing.db_id ?? incoming.db_id ?? incoming.id ?? existing.id,
     image_status: imageStatus,
-    image_url:
-      existing.image_status === ENVIRONMENT_IMAGE_STATUS.COMPLETED
-        ? existing.image_url || incoming.image_url || ''
+    // Never keep "completed" without a URL when the other side has one.
+    image_url: incomingHasImage
+      ? incoming.image_url
+      : existingHasImage
+        ? existing.image_url
         : incoming.image_url || existing.image_url || '',
   }
 }
@@ -269,6 +279,22 @@ export function mergeEnvironmentsWithPriority({
   return merged
 }
 
+export function shouldAutoStartEnvironmentGeneration(status, { environments = [] } = {}) {
+  if (hasProjectEnvironments(environments)) return false
+  if (
+    status === PROJECT_GEN_STATUS.COMPLETED ||
+    status === PROJECT_GEN_STATUS.COMPLETED_WITH_ERRORS ||
+    status === PROJECT_GEN_STATUS.CANCELLED ||
+    status === PROJECT_GEN_STATUS.RUNNING ||
+    status === PROJECT_GEN_STATUS.STALLED ||
+    status === 'queued' ||
+    status === 'generating'
+  ) {
+    return false
+  }
+  return true
+}
+
 export function allEnvironmentsImageComplete(environments = []) {
   const normalized = normalizeEnvironmentList(environments)
   return (
@@ -313,25 +339,22 @@ export function shouldStopEnvironmentPolling(progress, environments = []) {
 
   const normalized = normalizeEnvironmentList(environments)
 
-  if (normalized.length > 0 && areEnvironmentsGenerationSettled(normalized)) {
-    if (!hasActiveEnvironmentGenerationTasks(progress, normalized)) {
-      return true
-    }
+  if (normalized.length > 0 && allEnvironmentsImageComplete(normalized)) {
+    return true
+  }
+
+  if (progress && isGenerationTerminal(progress.status)) {
+    return allEnvironmentsImageComplete(normalized) || normalized.length === 0
   }
 
   const total = progress?.total ?? 0
   const completed = progress?.completed ?? 0
   const failed = progress?.failed ?? 0
-  const countsDone = total > 0 && completed + failed >= total
-
-  if (countsDone && !hasActiveEnvironmentGenerationTasks(progress, normalized)) {
-    return true
-  }
 
   if (
-    progress &&
-    isGenerationTerminal(progress.status) &&
-    !hasActiveEnvironmentGenerationTasks(progress, normalized)
+    total > 0 &&
+    completed + failed >= total &&
+    (normalized.length === 0 || allEnvironmentsImageComplete(normalized))
   ) {
     return true
   }
@@ -339,14 +362,49 @@ export function shouldStopEnvironmentPolling(progress, environments = []) {
   return false
 }
 
+export function mergeEnvironmentProgressWithList(progress, environments = []) {
+  if (!progress) return null
+
+  const normalized = normalizeEnvironmentList(environments)
+  const total = Math.max(progress.total ?? 0, normalized.length)
+  const completedFromList = normalized.filter(
+    (environment) => environment.image_status === ENVIRONMENT_IMAGE_STATUS.COMPLETED
+  ).length
+  const failedFromList = normalized.filter(
+    (environment) => environment.image_status === ENVIRONMENT_IMAGE_STATUS.FAILED
+  ).length
+
+  const completed = Math.max(progress.completed ?? 0, completedFromList)
+  const failed = Math.max(progress.failed ?? 0, failedFromList)
+  const remaining = Math.max(0, total - completed - failed)
+
+  return {
+    ...progress,
+    total,
+    completed,
+    failed,
+    remaining,
+    progress_percent:
+      total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : progress.progress_percent,
+  }
+}
+
 export function normalizeEnvironmentGenerationProgress(progress, environments = []) {
   const normalizedEnvironments = normalizeEnvironmentList(environments)
-  const isComplete =
-    hasProjectEnvironments(normalizedEnvironments) &&
-    (progress?.status === PROJECT_GEN_STATUS.COMPLETED ||
-      areEnvironmentsGenerationSettled(normalizedEnvironments))
+  const merged = mergeEnvironmentProgressWithList(progress, normalizedEnvironments)
+  const imagesDone = allEnvironmentsImageComplete(normalizedEnvironments)
+  const isComplete = hasProjectEnvironments(normalizedEnvironments) && imagesDone
 
-  return normalizeGenerationProgress(progress, { isComplete })
+  const adjustedProgress =
+    merged && !imagesDone && isGenerationTerminal(merged.status)
+      ? {
+          ...merged,
+          status: PROJECT_GEN_STATUS.RUNNING,
+          progress_percent: undefined,
+        }
+      : merged
+
+  return normalizeGenerationProgress(adjustedProgress, { isComplete })
 }
 
 export function isEnvironmentGenerationInProgress(status) {

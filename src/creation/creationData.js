@@ -1,8 +1,7 @@
 export const CREATION_STEPS = [
   { id: 'story', label: 'Story' },
-  { id: 'script', label: 'Script' },
   { id: 'screenplay', label: 'Screenplay' },
-  { id: 'sceneboard', label: 'Sceneboard' },
+  { id: 'sceneboard', label: 'Sequences' },
   { id: 'characters', label: 'Characters' },
   { id: 'environments', label: 'Environments' },
   { id: 'storyboard', label: 'Storyboard' },
@@ -13,9 +12,8 @@ export const CREATION_STEP_COUNT = CREATION_STEPS.length
 
 export const WORKSPACE_QUESTIONS = {
   story: 'What story am I telling?',
-  script: 'How does it sound?',
   screenplay: 'How does it play?',
-  sceneboard: 'How is the story broken into scenes?',
+  sceneboard: 'How is the story broken into visual sequences?',
   characters: 'Who appears?',
   environments: 'Where does it happen?',
   storyboard: 'How does each scene play on screen?',
@@ -28,18 +26,15 @@ export function getWorkspaceQuestion(stepId) {
 
 export const PRODUCER_NOTES = {
   story: [
-    { title: 'Story hook', text: 'Lead with emotion and clear stakes so the script has something to build from.' },
-  ],
-  script: [
-    { title: 'Dialogue', text: 'Use dialogue sparingly in early drafts. Let action and environment do part of the storytelling.' },
+    { title: 'Story hook', text: 'Lead with emotion and clear stakes so the screenplay has something to build from.' },
   ],
   screenplay: [
-    { title: 'Formatting', text: 'Consistent scene headers and beat labels help downstream episode and scene generation.' },
+    { title: 'Formatting', text: 'Consistent scene headers and beat labels help downstream episode and sequence generation.' },
   ],
   sceneboard: [
-    { title: 'Scene planning', text: 'Review and edit scenes extracted from your screenplay before moving on to characters.' },
-    { title: 'Scene by scene', text: 'Select a scene to review its details, then add or reorder scenes as needed.' },
-    { title: 'Next step', text: 'Continue to Characters once your scene list looks right.' },
+    { title: 'Sequence planning', text: 'Review and edit visual sequences extracted from your screenplay before moving on to characters.' },
+    { title: 'Sequence by sequence', text: 'Select a sequence to review its details, then add or reorder sequences as needed.' },
+    { title: 'Next step', text: 'Continue to Characters once your sequence list looks right.' },
   ],
   characters: [
     { title: 'Cast review', text: 'Confirm characters match your screenplay before continuing to Environments.' },

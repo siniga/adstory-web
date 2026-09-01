@@ -4,8 +4,8 @@ export default function SceneInfoSidebar({ scene }) {
   if (!scene) {
     return (
       <aside className={styles.infoPanel}>
-        <h2 className={styles.infoTitle}>Scene Information</h2>
-        <p className={styles.loadingMessage}>Select a scene to view details.</p>
+        <h2 className={styles.infoTitle}>Sequence Information</h2>
+        <p className={styles.loadingMessage}>Select a sequence to view details.</p>
       </aside>
     )
   }
@@ -19,10 +19,10 @@ export default function SceneInfoSidebar({ scene }) {
 
   return (
     <aside className={styles.infoPanel}>
-      <h2 className={styles.infoTitle}>Scene Information</h2>
+      <h2 className={styles.infoTitle}>Sequence Information</h2>
       <dl className={styles.infoList}>
         <div className={styles.infoRow}>
-          <dt>Characters in Scene</dt>
+          <dt>Characters in Sequence</dt>
           <dd>{characters}</dd>
         </div>
         <div className={styles.infoRow}>

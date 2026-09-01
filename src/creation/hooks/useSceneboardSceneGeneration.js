@@ -1,64 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  getSceneGenerationProgress,
-  startSceneGeneration,
-} from '../../services/adstoryApi'
+import { getSceneGenerationProgress, startSceneGeneration } from '../../services/adstoryApi'
 import { formatUserFriendlyError } from '../../utils/userFriendlyErrors'
 import {
+  isSceneGenerationBlank,
   isSceneGenerationInProgress,
   isSceneGenerationTerminal,
-  normalizeSceneGenerationProgress,
-  shouldStopScenePolling,
+  shouldAutoStartSceneGeneration,
 } from '../sceneGenerationStatus'
-import { patchSceneboardScenesFromProgress, areSceneboardScenesGenerationSettled } from '../sceneboardStatus'
-
+import { areSceneboardScenesGenerationSettled } from '../sceneboardStatus'
 import {
-  logFullLoadedOnce,
-  logPollingStarted,
-  logPollingStopped,
-} from '../generationPolling'
+  GENERATION_TYPES,
+  useProjectGenerationSlice,
+} from '../projectGeneration/ProjectGenerationProvider'
 
-const POLL_INTERVAL_MS = 2000
-const PROGRESS_ENDPOINT = 'GET /scenes/progress'
+const sceneStartInflight = new Map()
 
-function applyProgressMeta(progress) {
-  return {
-    sceneGenerationStatus: progress.status ?? null,
-    sceneGenerationTotal: progress.total ?? 0,
-    sceneGenerationCompleted: progress.completed ?? 0,
-    sceneGenerationFailed: progress.failed ?? 0,
-    sceneGenerationStartedAt:
-      progress.project?.scene_generation_started_at ?? progress.startedAt ?? null,
-    sceneGenerationFinishedAt:
-      progress.project?.scene_generation_finished_at ?? progress.finishedAt ?? null,
-  }
-}
-
+/**
+ * Sceneboard generation: start + display only.
+ * ProjectGenerationProvider owns all polling / progress merge.
+ */
 export default function useSceneboardSceneGeneration({
   enabled = false,
   projectId,
   screenplay = '',
   initialStatus = null,
-  initialStartedAt = null,
   scenes = [],
-  loadProjectOnComplete,
-  reloadSceneboard,
-  onScenesChange,
-  onGenerationMetaChange,
-  onGenerationComplete,
   onError,
 }) {
-  const [progress, setProgress] = useState(null)
-  const [monitoring, setMonitoring] = useState(false)
-  const [starting, setStarting] = useState(false)
+  const coordinator = useProjectGenerationSlice(GENERATION_TYPES.SCENES)
 
-  const scenesRef = useRef(scenes)
+  const [starting, setStarting] = useState(false)
   const generationStartedRef = useRef(false)
-  const initCompletedRef = useRef(false)
-  const pollTimerRef = useRef(null)
+  const initializedForRef = useRef(null)
   const mountedRef = useRef(true)
-  const terminalLoadPromiseRef = useRef(null)
   const projectIdRef = useRef(projectId)
+  const startingRef = useRef(false)
+  const scenesRef = useRef(scenes)
 
   useEffect(() => {
     scenesRef.current = scenes
@@ -68,7 +45,7 @@ export default function useSceneboardSceneGeneration({
     if (projectIdRef.current !== projectId) {
       projectIdRef.current = projectId
       generationStartedRef.current = false
-      initCompletedRef.current = false
+      initializedForRef.current = null
     }
   }, [projectId])
 
@@ -76,10 +53,6 @@ export default function useSceneboardSceneGeneration({
     mountedRef.current = true
     return () => {
       mountedRef.current = false
-      if (pollTimerRef.current) {
-        clearTimeout(pollTimerRef.current)
-        pollTimerRef.current = null
-      }
     }
   }, [])
 
@@ -90,292 +63,151 @@ export default function useSceneboardSceneGeneration({
     [onError]
   )
 
-  const publishProgress = useCallback(
-    (nextProgress, scenesForCounts = scenesRef.current) => {
-      if (!nextProgress) return
-
-      const normalized = normalizeSceneGenerationProgress(nextProgress, scenesForCounts)
-      setProgress(normalized)
-      onGenerationMetaChange?.({
-        ...applyProgressMeta({
-          ...normalized,
-          startedAt: initialStartedAt,
-          finishedAt: normalized.project?.scene_generation_finished_at ?? null,
-        }),
-      })
-    },
-    [initialStartedAt, onGenerationMetaChange]
-  )
-
-  const stopPolling = useCallback((reason) => {
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current)
-      pollTimerRef.current = null
-    }
-    setMonitoring(false)
-    if (reason) {
-      logPollingStopped(PROGRESS_ENDPOINT)
-    }
-  }, [])
-
-  const applyProgressScenes = useCallback(
-    (progressScenes, { replace = false } = {}) => {
-      if (!progressScenes?.length) return scenesRef.current
-
-      const next = replace
-        ? patchSceneboardScenesFromProgress([], progressScenes)
-        : patchSceneboardScenesFromProgress(scenesRef.current, progressScenes)
-
-      onScenesChange?.(next)
-      return next
-    },
-    [onScenesChange]
-  )
-
-  const reloadAuthoritativeSceneboard = useCallback(async () => {
-    const completeLoad = loadProjectOnComplete
-
-    if (completeLoad) {
-      logFullLoadedOnce('scene generation complete')
-      const refreshedProject = await completeLoad()
-      const loadedScenes = refreshedProject?.scenes ?? scenesRef.current
-      console.log('[Sceneboard] ProjectStore after terminal load', loadedScenes.length)
-      if (loadedScenes.length) {
-        onScenesChange?.(loadedScenes)
-      }
-      return loadedScenes.length ? loadedScenes : scenesRef.current
-    }
-
-    if (!reloadSceneboard) {
-      return scenesRef.current
-    }
-
-    const loadedScenes = await reloadSceneboard()
-    console.log('[Sceneboard] sceneboard reloaded after generation', loadedScenes.length)
-    return loadedScenes
-  }, [loadProjectOnComplete, onScenesChange, reloadSceneboard])
-
-  const loadTerminalState = useCallback(
-    async (nextProgress) => {
-      if (terminalLoadPromiseRef.current) {
-        return terminalLoadPromiseRef.current
-      }
-
-      terminalLoadPromiseRef.current = (async () => {
-        let loadedScenes = scenesRef.current
-
-        if (reloadSceneboard || loadProjectOnComplete) {
-          loadedScenes = await reloadAuthoritativeSceneboard()
-        } else if (nextProgress?.scenes?.length) {
-          loadedScenes = applyProgressScenes(nextProgress.scenes, { replace: true })
-        }
-
-        publishProgress(nextProgress, loadedScenes)
-        onGenerationComplete?.(loadedScenes)
-        return loadedScenes
-      })()
-
-      try {
-        return await terminalLoadPromiseRef.current
-      } finally {
-        terminalLoadPromiseRef.current = null
-      }
-    },
-    [
-      applyProgressScenes,
-      loadProjectOnComplete,
-      onGenerationComplete,
-      publishProgress,
-      reloadAuthoritativeSceneboard,
-      reloadSceneboard,
-    ]
-  )
-
-  const finalizeTerminalProgress = useCallback(
-    async (nextProgress) => {
-      await loadTerminalState(nextProgress)
-      if (mountedRef.current) {
-        stopPolling(true)
-      }
-    },
-    [loadTerminalState, stopPolling]
-  )
-
-  const applyProgressReadOnly = useCallback(
+  const handOffToCoordinator = useCallback(
     (nextProgress) => {
-      if (!nextProgress) return scenesRef.current
-
-      const loadedScenes = nextProgress.scenes?.length
-        ? applyProgressScenes(nextProgress.scenes)
-        : scenesRef.current
-
-      publishProgress(nextProgress, loadedScenes)
-      return loadedScenes
+      if (!coordinator || !nextProgress) return
+      coordinator.publishProgress(nextProgress)
     },
-    [applyProgressScenes, publishProgress]
+    [coordinator]
   )
-
-  const pollOnce = useCallback(async () => {
-    if (!projectId || !mountedRef.current) return null
-
-    if (shouldStopScenePolling(null, scenesRef.current)) {
-      stopPolling(true)
-      return null
-    }
-
-    try {
-      const nextProgress = await getSceneGenerationProgress(projectId)
-      if (!mountedRef.current) return null
-
-      const loadedScenes = applyProgressReadOnly(nextProgress)
-
-      if (shouldStopScenePolling(nextProgress, loadedScenes)) {
-        await finalizeTerminalProgress(nextProgress)
-        return nextProgress
-      }
-
-      return nextProgress
-    } catch (err) {
-      if (mountedRef.current) {
-        reportError(err, 'Failed to load scene generation progress')
-        stopPolling()
-      }
-      return null
-    }
-  }, [applyProgressReadOnly, finalizeTerminalProgress, projectId, reportError, stopPolling])
-
-  const schedulePoll = useCallback(() => {
-    if (pollTimerRef.current) return
-    if (shouldStopScenePolling(null, scenesRef.current)) {
-      stopPolling(true)
-      return
-    }
-
-    setMonitoring(true)
-    pollTimerRef.current = setTimeout(async () => {
-      pollTimerRef.current = null
-      const nextProgress = await pollOnce()
-      if (
-        mountedRef.current &&
-        nextProgress &&
-        !shouldStopScenePolling(nextProgress, scenesRef.current)
-      ) {
-        schedulePoll()
-      }
-    }, POLL_INTERVAL_MS)
-  }, [pollOnce, stopPolling])
-
-  const beginMonitoring = useCallback(() => {
-    if (shouldStopScenePolling(null, scenesRef.current)) {
-      stopPolling(true)
-      return
-    }
-
-    logPollingStarted(PROGRESS_ENDPOINT)
-    setMonitoring(true)
-    pollOnce().then((nextProgress) => {
-      if (
-        mountedRef.current &&
-        nextProgress &&
-        !shouldStopScenePolling(nextProgress, scenesRef.current)
-      ) {
-        schedulePoll()
-      }
-    })
-  }, [pollOnce, schedulePoll, stopPolling])
 
   const startGeneration = useCallback(async () => {
-    if (!projectId || generationStartedRef.current || starting) return
+    if (!projectId || !coordinator || generationStartedRef.current || startingRef.current) {
+      return false
+    }
 
+    startingRef.current = true
     setStarting(true)
     generationStartedRef.current = true
 
     try {
-      console.log('[Sceneboard] starting scene generation from screenplay')
-      const nextProgress = await startSceneGeneration(projectId)
-      if (!mountedRef.current) return
-
-      applyProgressReadOnly(nextProgress)
-
-      if (shouldStopScenePolling(nextProgress, scenesRef.current)) {
-        await finalizeTerminalProgress(nextProgress)
-        return
+      let startPromise = sceneStartInflight.get(String(projectId))
+      if (!startPromise) {
+        startPromise = startSceneGeneration(projectId).finally(() => {
+          sceneStartInflight.delete(String(projectId))
+        })
+        sceneStartInflight.set(String(projectId), startPromise)
       }
 
-      schedulePoll()
+      const nextProgress = await startPromise
+      if (!mountedRef.current) return true
+
+      if (isSceneGenerationBlank(nextProgress, scenesRef.current)) {
+        generationStartedRef.current = false
+        reportError(
+          new Error('Scene planning finished without creating any scenes. Try again.'),
+          'Failed to start scene generation'
+        )
+        return false
+      }
+
+      handOffToCoordinator(nextProgress)
+
+      if (
+        !isSceneGenerationTerminal(nextProgress?.status) &&
+        isSceneGenerationInProgress(nextProgress?.status)
+      ) {
+        await coordinator.refreshProgress()
+      }
+
+      return true
     } catch (err) {
       const message = err instanceof Error ? err.message : ''
       const alreadyRunning = message.toLowerCase().includes('already running')
 
       if (alreadyRunning) {
-        beginMonitoring()
-        return
+        await coordinator.refreshProgress()
+        return true
       }
 
       generationStartedRef.current = false
       reportError(err, 'Failed to start scene generation')
+      return false
     } finally {
+      startingRef.current = false
       if (mountedRef.current) {
         setStarting(false)
       }
     }
-  }, [
-    applyProgressReadOnly,
-    beginMonitoring,
-    finalizeTerminalProgress,
-    projectId,
-    reportError,
-    schedulePoll,
-    starting,
-  ])
+  }, [coordinator, handOffToCoordinator, projectId, reportError])
+
+  const startGenerationRef = useRef(startGeneration)
+  startGenerationRef.current = startGeneration
 
   useEffect(() => {
-    if (!enabled || !projectId) {
-      stopPolling()
+    if (!enabled || !projectId || !coordinator) return undefined
+
+    const hasScreenplay = Boolean(screenplay?.trim())
+    const sceneList = scenesRef.current
+    const status = initialStatus
+
+    if (sceneList.length > 0) {
+      const scenesKey = `${projectId}:has-scenes`
+      if (initializedForRef.current === scenesKey) return undefined
+
+      initializedForRef.current = scenesKey
+      generationStartedRef.current = true
+
+      if (isSceneGenerationInProgress(status)) {
+        coordinator.refreshProgress()
+      }
       return undefined
     }
 
-    if (initCompletedRef.current) {
-      return () => stopPolling()
+    if (!hasScreenplay) return undefined
+
+    const autoStartKey = `${projectId}:auto-start`
+    if (initializedForRef.current === autoStartKey || generationStartedRef.current) {
+      return undefined
     }
 
     let cancelled = false
-    const hasScreenplay = Boolean(screenplay?.trim())
 
     const initialize = async () => {
-      initCompletedRef.current = true
-
-      const sceneList = scenesRef.current
-      const status = initialStatus
-
-      if (sceneList.length > 0) {
-        console.log('[Sceneboard] existing scenes found, skipping generation')
-        generationStartedRef.current = true
-
-        if (isSceneGenerationInProgress(status)) {
-          beginMonitoring()
-        }
-        return
-      }
-
-      if (!hasScreenplay) {
-        console.log('[Sceneboard] no screenplay, skipping auto scene generation')
-        return
-      }
+      if (cancelled) return
 
       if (isSceneGenerationInProgress(status)) {
-        console.log('[Sceneboard] resuming scene generation in progress')
+        initializedForRef.current = autoStartKey
         generationStartedRef.current = true
-        beginMonitoring()
+        await coordinator.refreshProgress()
         return
       }
 
       if (isSceneGenerationTerminal(status)) {
+        initializedForRef.current = autoStartKey
         return
       }
 
-      if (!generationStartedRef.current && !cancelled) {
-        await startGeneration()
+      // Re-check server state before starting — local list may still be hydrating.
+      try {
+        const latest = await getSceneGenerationProgress(projectId)
+        if (!cancelled && latest) {
+          handOffToCoordinator(latest)
+        }
+        const latestScenes = latest?.scenes ?? scenesRef.current
+        const latestStatus = latest?.status ?? status
+        if (
+          (latestScenes?.length ?? 0) > 0 ||
+          isSceneGenerationTerminal(latestStatus) ||
+          isSceneGenerationInProgress(latestStatus) ||
+          !shouldAutoStartSceneGeneration(latestStatus, { scenes: latestScenes ?? [] })
+        ) {
+          initializedForRef.current = autoStartKey
+          generationStartedRef.current = (latestScenes?.length ?? 0) > 0
+          return
+        }
+      } catch {
+        // Fall through to shouldAutoStart with local data.
+      }
+
+      if (!shouldAutoStartSceneGeneration(status, { scenes: sceneList })) {
+        initializedForRef.current = autoStartKey
+        return
+      }
+
+      const started = await startGenerationRef.current?.()
+      if (!cancelled && started) {
+        initializedForRef.current = autoStartKey
       }
     }
 
@@ -383,24 +215,22 @@ export default function useSceneboardSceneGeneration({
 
     return () => {
       cancelled = true
-      stopPolling()
     }
-  }, [
-    beginMonitoring,
-    enabled,
-    initialStatus,
-    projectId,
-    screenplay,
-    startGeneration,
-    stopPolling,
-  ])
+  }, [coordinator, enabled, initialStatus, projectId, screenplay])
+
+  const progress = coordinator?.progress ?? null
+  const monitoring = Boolean(coordinator?.monitoring)
+
+  const hasLiveSceneWork =
+    isSceneGenerationInProgress(progress?.status) ||
+    (progress?.remaining ?? 0) > 0 ||
+    (progress?.queued ?? 0) > 0 ||
+    (progress?.running ?? 0) > 0 ||
+    scenes.some((scene) => scene?.status === 'queued' || scene?.status === 'generating')
 
   const sceneGenerationActive =
     !areSceneboardScenesGenerationSettled(scenes) &&
-    (starting ||
-      monitoring ||
-      isSceneGenerationInProgress(initialStatus) ||
-      isSceneGenerationInProgress(progress?.status))
+    (starting || isSceneGenerationInProgress(initialStatus) || hasLiveSceneWork)
 
   const sceneGenerationFailed =
     Boolean(screenplay?.trim()) &&
@@ -414,5 +244,12 @@ export default function useSceneboardSceneGeneration({
     starting,
     sceneGenerationActive,
     sceneGenerationFailed,
+    isStuck: Boolean(coordinator?.isStuck),
+    resuming: Boolean(coordinator?.resuming),
+    cancelling: Boolean(coordinator?.cancelling),
+    handleResumeGeneration: () => coordinator?.handleResumeGeneration(false),
+    handleCancelGeneration: () => coordinator?.handleCancelGeneration(),
+    canCancel: Boolean(coordinator?.canCancel),
+    canResume: Boolean(coordinator?.canResume),
   }
 }

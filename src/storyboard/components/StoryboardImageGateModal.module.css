@@ -1,0 +1,197 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10003;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 6, 12, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.panel {
+  width: min(640px, 100%);
+  max-height: min(88vh, 820px);
+  overflow: auto;
+  padding: 28px 28px 24px;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124, 58, 237, 0.16), transparent 60%),
+    #121216;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: #f4f4f5;
+}
+
+.subtitle {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+
+.meter {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.meterFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  transition: width 0.35s ease;
+}
+
+.live {
+  margin: 12px 0 18px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f4f4f5;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 0 0 8px;
+}
+
+.card {
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #1a1a22;
+}
+
+.frame {
+  aspect-ratio: 3 / 4;
+  display: grid;
+  place-items: center;
+  background: #101018;
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placeholder,
+.failed {
+  padding: 8px;
+  font-size: 11px;
+  text-align: center;
+  color: #71717a;
+}
+
+.failed {
+  color: #fda4af;
+}
+
+.caption {
+  margin: 0;
+  padding: 8px 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e4e4e7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.choiceBox,
+.failBox,
+.doneBox {
+  margin-top: 16px;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+}
+
+.choiceBox,
+.doneBox {
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.failBox {
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.choiceTitle,
+.failTitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.choiceTitle {
+  color: #e9d5ff;
+}
+
+.failTitle {
+  color: #fecdd3;
+}
+
+.choiceMessage,
+.failMessage {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e4e4e7;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.secondaryBtn,
+.primaryBtn {
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #d4d4d8;
+}
+
+.primaryBtn {
+  border: 0;
+  background: #7c3aed;
+  color: #fafafa;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

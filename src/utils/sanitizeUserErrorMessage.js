@@ -21,6 +21,13 @@ const TECHNICAL_PATTERNS = [
   /insert\s+into/i,
   /update\s+.+\s+set/i,
   /delete\s+from/i,
+  /gemini/i,
+  /api key/i,
+  /google ai/i,
+  /xampp/i,
+  /artisan/i,
+  /prepayment credits/i,
+  /php artisan/i,
 ]
 
 const AUTH_SAFE_MAX_LENGTH = 120
@@ -65,7 +72,23 @@ function coerceErrorText(error) {
   return ''
 }
 
+function isDatabaseConnectionError(message) {
+  const lower = String(message ?? '').toLowerCase()
+  return (
+    /sqlstate/i.test(message) ||
+    lower.includes('connection refused') ||
+    lower.includes('actively refused') ||
+    lower.includes('could not be made because') ||
+    lower.includes('connection: mysql') ||
+    lower.includes('no connection could be made')
+  )
+}
+
 function getFallback(status, context) {
+  if (context === 'database') {
+    return 'Something went wrong. Please try again.'
+  }
+
   if (context === 'auth') {
     if (status === 401) {
       return 'Invalid email or password.'
@@ -107,6 +130,11 @@ export function sanitizeUserErrorMessage(message, status, context = 'default') {
   }
 
   const trimmed = text.trim()
+
+  if (isDatabaseConnectionError(trimmed)) {
+    return getFallback(status, 'database')
+  }
+
   if (!trimmed || isTechnicalError(trimmed) || trimmed.length > 200) {
     return getFallback(status, context)
   }

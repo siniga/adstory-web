@@ -10,7 +10,8 @@ import {
 import { createEmptyProject } from './projectModel'
 import { loadProject as loadProjectFromStorage } from './projectStorage'
 import { mapApiResponseToProjectState } from '../services/api/mapApiProject'
-import { getFullAdstoryProject, getProjectCharacters, getProjectEnvironments, getProjectSceneboard, getProjectStoryboard, getStoryboardScene } from '../services/adstoryApi'
+import * as projectApi from '../services/projectApi'
+import { getProjectCharacters, getProjectEnvironments, getProjectSceneboard, getProjectStoryboard, getStoryboardScene, mapAdstoryCharacters, mapAdstoryEnvironments, mapAdstoryScenes, mapAdstoryShot } from '../services/adstoryApi'
 import {
   guardArrayReplace,
   logProjectStore,
@@ -19,8 +20,28 @@ import {
 } from './projectStoreHelpers'
 import { normalizeCharacterList } from '../creation/characterGenerationStatus'
 import { normalizeEnvironmentList } from '../creation/environmentGenerationStatus'
+import { syncStoryboardGeneratedFromProject, syncStoryboardGeneratedFromScenes } from '../storyboard/storyboardStale'
 
 const ProjectStoreContext = createContext(null)
+
+function mapLaravelStoryboardScenes(scenes = [], shots = []) {
+  return scenes.map((scene) => {
+    const sceneShots = shots.filter((shot) => String(shot.scene_id) === String(scene.id))
+    return {
+      apiId: scene.id,
+      scene_number: scene.scene_number,
+      title: scene.title ?? '',
+      description: scene.description ?? '',
+      location: scene.location ?? '',
+      time_of_day: scene.time_of_day ?? '',
+      mood: scene.mood ?? '',
+      shotCount: sceneShots.length,
+      shotGenerationStatus: sceneShots.length ? 'completed' : 'not_started',
+      shotGenerationError: null,
+      status: scene.status ?? null,
+    }
+  })
+}
 
 function applyProjectSnapshot(currentProject, mappedProject) {
   return {
@@ -52,6 +73,7 @@ export function ProjectStoreProvider({ children, persistProject }) {
   const [generationProgress, setGenerationProgress] = useState({})
 
   const projectIdRef = useRef(project.projectId ?? null)
+  const loadEpochRef = useRef(0)
   const fullLoadedProjectIdRef = useRef(null)
   const fullLoadInFlightRef = useRef(null)
   const charactersLoadedProjectIdRef = useRef(null)
@@ -81,14 +103,14 @@ export function ProjectStoreProvider({ children, persistProject }) {
     (nextProject, { scenes: nextScenes, characters: nextCharacters, environments: nextEnvironments } = {}) => {
       const merged = {
         ...nextProject,
-        scenes: nextScenes ?? nextProject.scenes ?? scenes,
-        characters: nextCharacters ?? nextProject.characters ?? characters,
-        environments: nextEnvironments ?? nextProject.environments ?? environments,
+        scenes: nextScenes ?? nextProject.scenes ?? scenesRef.current,
+        characters: nextCharacters ?? nextProject.characters ?? charactersRef.current,
+        environments: nextEnvironments ?? nextProject.environments ?? environmentsRef.current,
       }
       persistProject?.(merged)
       return merged
     },
-    [characters, environments, persistProject, scenes]
+    [persistProject]
   )
 
   const applyProject = useCallback(
@@ -99,6 +121,7 @@ export function ProjectStoreProvider({ children, persistProject }) {
         characters: nextCharacters,
         environments: nextEnvironments,
         replaceSlices = false,
+        slice = null,
       } = {}
     ) => {
       const incomingScenes = nextScenes ?? nextProject.scenes ?? []
@@ -111,14 +134,20 @@ export function ProjectStoreProvider({ children, persistProject }) {
       const currentCharacters = charactersRef.current
       const currentEnvironments = environmentsRef.current
 
-      let resolvedScenes
-      let resolvedCharacters
-      let resolvedEnvironments
+      let resolvedScenes = currentScenes
+      let resolvedCharacters = currentCharacters
+      let resolvedEnvironments = currentEnvironments
 
-      if (replaceSlices) {
+      if (slice === 'scenes') {
         resolvedScenes = incomingScenes
+      } else if (slice === 'characters') {
         resolvedCharacters = incomingCharacters
+      } else if (slice === 'environments') {
         resolvedEnvironments = incomingEnvironments
+      } else if (replaceSlices) {
+        resolvedScenes = incomingScenes.length ? incomingScenes : currentScenes
+        resolvedCharacters = incomingCharacters.length ? incomingCharacters : currentCharacters
+        resolvedEnvironments = incomingEnvironments.length ? incomingEnvironments : currentEnvironments
       } else {
         const scenesGuarded = guardArrayReplace('scenes', currentScenes, incomingScenes)
         resolvedScenes = scenesGuarded.blocked
@@ -155,15 +184,24 @@ export function ProjectStoreProvider({ children, persistProject }) {
       setProject((currentProject) => ({
         ...currentProject,
         ...projectFields,
-        projectId: projectFields.projectId ?? currentProject.projectId,
+        projectId:
+          projectFields.projectId !== undefined
+            ? projectFields.projectId
+            : currentProject.projectId,
       }))
-      setScenesState(resolvedScenes)
-      setCharactersState(resolvedCharacters)
-      setEnvironmentsState(resolvedEnvironments)
 
-      scenesRef.current = resolvedScenes
-      charactersRef.current = resolvedCharacters
-      environmentsRef.current = resolvedEnvironments
+      if (slice === null || slice === 'scenes') {
+        setScenesState(resolvedScenes)
+        scenesRef.current = resolvedScenes
+      }
+      if (slice === null || slice === 'characters') {
+        setCharactersState(resolvedCharacters)
+        charactersRef.current = resolvedCharacters
+      }
+      if (slice === null || slice === 'environments') {
+        setEnvironmentsState(resolvedEnvironments)
+        environmentsRef.current = resolvedEnvironments
+      }
 
       console.log('ProjectStore environments:', resolvedEnvironments.length)
       console.log('ProjectStore characters:', resolvedCharacters.length)
@@ -187,6 +225,7 @@ export function ProjectStoreProvider({ children, persistProject }) {
   )
 
   const clearProject = useCallback(() => {
+    loadEpochRef.current += 1
     projectIdRef.current = null
     fullLoadedProjectIdRef.current = null
     fullLoadInFlightRef.current = null
@@ -203,11 +242,15 @@ export function ProjectStoreProvider({ children, persistProject }) {
     setSelectedShot(null)
     setErrors({})
     setGenerationProgress({})
+    scenesRef.current = []
+    charactersRef.current = []
+    environmentsRef.current = []
+    projectRef.current = empty
     persistProject?.(empty)
   }, [persistProject])
 
   const loadProject = useCallback(
-    async (projectId, { force = false, reason = 'enter project' } = {}) => {
+    async (projectId, { force = false, reason = 'enter project', slice = null } = {}) => {
       const id = projectId ?? project.projectId
       if (!id) {
         return project
@@ -225,7 +268,7 @@ export function ProjectStoreProvider({ children, persistProject }) {
         environmentsRef.current = []
       }
 
-      if (!force && fullLoadedProjectIdRef.current === String(id) && fullLoadInFlightRef.current == null) {
+      if (!force && !slice && fullLoadedProjectIdRef.current === String(id) && fullLoadInFlightRef.current == null) {
         const cachedProject = loadProjectFromStorage()
         if (String(cachedProject.projectId) === String(id)) {
           return applyProject(cachedProject)
@@ -239,6 +282,7 @@ export function ProjectStoreProvider({ children, persistProject }) {
       setLoading(true)
       setErrors((previous) => ({ ...previous, load: null }))
 
+      const epoch = loadEpochRef.current
       fullLoadInFlightRef.current = (async () => {
         try {
           const current = loadProjectFromStorage()
@@ -247,8 +291,33 @@ export function ProjectStoreProvider({ children, persistProject }) {
               ? current
               : createEmptyProject()
 
-          const apiProject = await getFullAdstoryProject(id)
-          const mapped = mapApiResponseToProjectState(baseProject, apiProject)
+          const apiProject = await projectApi.getProject(id)
+          if (epoch !== loadEpochRef.current) {
+            return projectRef.current
+          }
+          let enrichedApiProject = apiProject
+
+          if (slice === 'characters') {
+            const fetchedCharacters = normalizeCharacterList(await getProjectCharacters(id))
+            if (epoch !== loadEpochRef.current) {
+              return projectRef.current
+            }
+            if (fetchedCharacters.length) {
+              enrichedApiProject = { ...enrichedApiProject, characters: fetchedCharacters }
+            }
+          }
+
+          if (slice === 'environments') {
+            const fetchedEnvironments = normalizeEnvironmentList(await getProjectEnvironments(id))
+            if (epoch !== loadEpochRef.current) {
+              return projectRef.current
+            }
+            if (fetchedEnvironments.length) {
+              enrichedApiProject = { ...enrichedApiProject, environments: fetchedEnvironments }
+            }
+          }
+
+          const mapped = mapApiResponseToProjectState(baseProject, enrichedApiProject)
           const merged = applyProjectSnapshot(
             {
               ...baseProject,
@@ -258,24 +327,36 @@ export function ProjectStoreProvider({ children, persistProject }) {
             { ...mapped, projectId: id }
           )
 
-          logProjectStore('full loaded once', reason)
-          fullLoadedProjectIdRef.current = String(id)
+          if (epoch !== loadEpochRef.current) {
+            return projectRef.current
+          }
+
+          logProjectStore(`full loaded once (slice: ${slice || 'all'})`, reason)
+          if (!slice) {
+            fullLoadedProjectIdRef.current = String(id)
+          }
           projectIdRef.current = String(id)
-          if (merged.characters?.length) {
+          if (merged.characters?.length && (slice === 'characters' || !slice)) {
             charactersLoadedProjectIdRef.current = String(id)
           }
-          if (merged.environments?.length) {
+          if (merged.environments?.length && (slice === 'environments' || !slice)) {
             environmentsLoadedProjectIdRef.current = String(id)
           }
 
-          return applyProject(merged, { replaceSlices: true })
+          syncStoryboardGeneratedFromProject(id, merged)
+          return applyProject(merged, { replaceSlices: true, slice })
         } catch (err) {
+          if (epoch !== loadEpochRef.current) {
+            return projectRef.current
+          }
           const message = err instanceof Error ? err.message : 'Failed to load project'
           setErrors((previous) => ({ ...previous, load: message }))
           throw err
         } finally {
-          setLoading(false)
-          fullLoadInFlightRef.current = null
+          if (epoch === loadEpochRef.current) {
+            setLoading(false)
+            fullLoadInFlightRef.current = null
+          }
         }
       })()
 
@@ -284,24 +365,55 @@ export function ProjectStoreProvider({ children, persistProject }) {
     [applyProject, project]
   )
 
+  const sceneboardInflightRef = useRef(new Map())
+
   const loadSceneboard = useCallback(
-    async (projectId) => {
-      const id = projectId ?? project.projectId
+    async (projectId, { silent = false } = {}) => {
+      const id = projectId ?? projectRef.current.projectId
       if (!id) return []
 
-      setLoading(true)
-      try {
-        const result = await getProjectSceneboard(id)
-        const nextScenes = result.scenes ?? []
-        const guarded = guardArrayReplace('scenes', scenes, nextScenes)
-        setScenesState(guarded.value)
-        syncPersist({ ...project, scenes: guarded.value }, { scenes: guarded.value })
-        return guarded.value
-      } finally {
-        setLoading(false)
+      const key = String(id)
+      const existing = sceneboardInflightRef.current.get(key)
+      if (existing) {
+        return existing
       }
+
+      const request = (async () => {
+        if (!silent) {
+          setLoading(true)
+        }
+        try {
+          let nextScenes = []
+          try {
+            const liveProject = await projectApi.getProject(id)
+            nextScenes = mapAdstoryScenes(liveProject.scenes ?? [])
+          } catch {
+            nextScenes = []
+          }
+
+          if (nextScenes.length === 0) {
+            const result = await getProjectSceneboard(id)
+            nextScenes = result.scenes ?? []
+          }
+          const guarded = guardArrayReplace('scenes', scenesRef.current, nextScenes)
+          setScenesState(guarded.value)
+          syncPersist(
+            { ...projectRef.current, scenes: guarded.value },
+            { scenes: guarded.value }
+          )
+          return guarded.value
+        } finally {
+          sceneboardInflightRef.current.delete(key)
+          if (!silent) {
+            setLoading(false)
+          }
+        }
+      })()
+
+      sceneboardInflightRef.current.set(key, request)
+      return request
     },
-    [project, scenes, syncPersist]
+    [syncPersist]
   )
 
   const setScenes = useCallback(
@@ -383,16 +495,24 @@ export function ProjectStoreProvider({ children, persistProject }) {
 
       setLoading(true)
       try {
-        const fetched = normalizeCharacterList(await getProjectCharacters(id))
-        if (!fetched.length) {
-          return characters
+        let fetched = []
+        let liveLoaded = false
+        try {
+          const liveProject = await projectApi.getProject(id)
+          fetched = normalizeCharacterList(mapAdstoryCharacters(liveProject.characters ?? []))
+          liveLoaded = true
+        } catch {
+          fetched = []
         }
-        const merged = mergeCharactersSafe(characters, fetched)
-        logProjectStore('characters merged', { count: merged.length, source: 'GET /characters' })
-        setCharactersState(merged)
-        syncPersist({ ...project, characters: merged }, { characters: merged })
+
+        if (!liveLoaded) {
+          fetched = normalizeCharacterList(await getProjectCharacters(id))
+        }
+
+        setCharactersState(fetched)
+        syncPersist({ ...project, characters: fetched }, { characters: fetched })
         charactersLoadedProjectIdRef.current = String(id)
-        return merged
+        return fetched
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load characters'
         setErrors((previous) => ({ ...previous, characters: message }))
@@ -422,23 +542,27 @@ export function ProjectStoreProvider({ children, persistProject }) {
 
       setLoading(true)
       try {
-        const fetched = normalizeEnvironmentList(await getProjectEnvironments(id))
-        console.log('[Environments] loaded', fetched.length)
-
-        if (!fetched.length) {
-          return currentEnvironments
+        let fetched = []
+        let liveLoaded = false
+        try {
+          const liveProject = await projectApi.getProject(id)
+          fetched = normalizeEnvironmentList(mapAdstoryEnvironments(liveProject.environments ?? []))
+          liveLoaded = true
+        } catch {
+          fetched = []
         }
 
-        let merged = currentEnvironments
-        setEnvironmentsState((current) => {
-          merged = mergeEnvironmentsSafe(current, fetched)
-          console.log('[Environments] merged without touching characters/scenes')
-          syncPersist({ ...projectRef.current, environments: merged }, { environments: merged })
-          environmentsRef.current = merged
-          return merged
-        })
+        if (!liveLoaded) {
+          fetched = normalizeEnvironmentList(await getProjectEnvironments(id))
+        }
+
+        console.log('[Environments] loaded', fetched.length)
+
+        setEnvironmentsState(fetched)
+        environmentsRef.current = fetched
+        syncPersist({ ...projectRef.current, environments: fetched }, { environments: fetched })
         environmentsLoadedProjectIdRef.current = String(id)
-        return merged
+        return fetched
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load environments'
         setErrors((previous) => ({ ...previous, environments: message }))
@@ -451,7 +575,7 @@ export function ProjectStoreProvider({ children, persistProject }) {
   )
 
   const refreshFullProject = useCallback(
-    async (reason = 'manual refresh') => loadProject(project.projectId, { force: true, reason }),
+    async (reason = 'manual refresh', { slice = null } = {}) => loadProject(project.projectId, { force: true, reason, slice }),
     [loadProject, project.projectId]
   )
 
@@ -461,8 +585,23 @@ export function ProjectStoreProvider({ children, persistProject }) {
 
     setLoading(true)
     try {
-      const result = await getProjectStoryboard(id)
-      const nextScenes = result.scenes ?? []
+      let nextScenes = []
+      try {
+        const liveProject = await projectApi.getProject(id)
+        const shots = liveProject.shots ?? []
+        if ((liveProject.scenes?.length ?? 0) > 0 && shots.length > 0) {
+          nextScenes = mapLaravelStoryboardScenes(liveProject.scenes, shots)
+        }
+      } catch {
+        nextScenes = []
+      }
+
+      if (nextScenes.length === 0) {
+        const result = await getProjectStoryboard(id)
+        nextScenes = result.scenes ?? []
+      }
+
+      syncStoryboardGeneratedFromScenes(id, nextScenes)
       setStoryboardScenesState(nextScenes)
       return nextScenes
     } catch (err) {
@@ -483,9 +622,47 @@ export function ProjectStoreProvider({ children, persistProject }) {
 
       setLoading(true)
       try {
-        const result = await getStoryboardScene(id, sceneId)
+        let result = null
+        try {
+          const liveProject = await projectApi.getProject(id)
+          const shots = liveProject.shots ?? []
+          const scene = (liveProject.scenes ?? []).find(
+            (item) => String(item.id) === String(sceneId)
+          )
+          if (scene && shots.length > 0) {
+            const sceneShots = shots.filter((shot) => String(shot.scene_id) === String(sceneId))
+            result = {
+              scene: {
+                apiId: scene.id,
+                scene_number: scene.scene_number,
+                title: scene.title ?? '',
+                description: scene.description ?? '',
+                location: scene.location ?? '',
+                time_of_day: scene.time_of_day ?? '',
+                mood: scene.mood ?? '',
+                shotCount: sceneShots.length,
+                shotGenerationStatus: sceneShots.length ? 'completed' : 'not_started',
+                status: scene.status ?? null,
+              },
+              shots: sceneShots.map((shot, index) =>
+                mapAdstoryShot(shot, {
+                  sceneNumber: scene.scene_number,
+                  indexInScene: index,
+                })
+              ),
+              characters: liveProject.characters ?? [],
+              environments: liveProject.environments ?? [],
+            }
+          }
+        } catch {
+          result = null
+        }
+
+        if (!result) {
+          result = await getStoryboardScene(id, sceneId)
+        }
+
         setSelectedScene(result.scene)
-        setStoryboardShotsState(result.shots ?? [])
         setStoryboardScenesState((previous) =>
           previous.map((scene) =>
             String(scene.apiId) === String(sceneId)
@@ -510,10 +687,13 @@ export function ProjectStoreProvider({ children, persistProject }) {
   )
 
   const setStoryboardShots = useCallback((nextShots) => {
-    const resolved = typeof nextShots === 'function' ? nextShots(storyboardShots) : nextShots
-    setStoryboardShotsState(resolved)
+    let resolved = nextShots
+    setStoryboardShotsState((previous) => {
+      resolved = typeof nextShots === 'function' ? nextShots(previous) : nextShots
+      return resolved
+    })
     return resolved
-  }, [storyboardShots])
+  }, [])
 
   const updateStoryboardSceneMeta = useCallback((sceneId, patch) => {
     setStoryboardScenesState((previous) =>

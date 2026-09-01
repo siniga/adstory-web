@@ -78,15 +78,16 @@ export function getStoryboardShotImageStatus(shot) {
   if (!shot) return 'none'
 
   const explicit = shot.image_status ?? shot.imageStatus
-  if (explicit === 'queued' || explicit === 'generating' || explicit === 'failed') {
-    return explicit
-  }
-  if (explicit === 'completed') return 'completed'
-
   const imageUrl = shot.image_url ?? shot.imageUrl
-  if (imageUrl != null && String(imageUrl).trim()) {
-    return 'completed'
-  }
+  const hasUrl = imageUrl != null && String(imageUrl).trim() !== ''
+
+  if (explicit === 'failed') return 'failed'
+
+  // A stored URL means the image is ready — stale queued/generating flags must not hide it.
+  if (hasUrl) return 'completed'
+
+  if (explicit === 'queued' || explicit === 'generating') return explicit
+  if (explicit === 'completed') return 'generating'
 
   if (explicit) return explicit
   return 'none'

@@ -26,7 +26,7 @@ export default function SceneDeleteModal({
 
   if (!open || !scene) return null
 
-  const sceneLabel = scene.title?.trim() || `Scene ${scene.scene_number ?? ''}`
+  const sceneLabel = scene.title?.trim() || `Sequence ${scene.scene_number ?? ''}`
 
   return createPortal(
     <div className={modalStyles.overlay} role="presentation" onClick={deleting ? undefined : onClose}>
@@ -40,7 +40,7 @@ export default function SceneDeleteModal({
       >
         <header className={modalStyles.header}>
           <h2 id="delete-scene-title" className={modalStyles.title}>
-            Delete Scene?
+            Delete Sequence?
           </h2>
         </header>
 
@@ -48,7 +48,7 @@ export default function SceneDeleteModal({
           <p id="delete-scene-message" className={modalStyles.hint}>
             {hasShots ? (
               <>
-                This scene already has shots. Deleting it will delete its shots too. Are you sure
+                This sequence already has shots. Deleting it will delete its shots too. Are you sure
                 you want to delete <strong>{sceneLabel}</strong>? This cannot be undone.
               </>
             ) : (
@@ -66,7 +66,7 @@ export default function SceneDeleteModal({
             Cancel
           </button>
           <button type="button" className={modalStyles.deleteBtn} onClick={onConfirm} disabled={deleting}>
-            {deleting ? 'Deleting…' : 'Delete Scene'}
+            {deleting ? 'Deleting…' : 'Delete Sequence'}
           </button>
         </footer>
       </div>

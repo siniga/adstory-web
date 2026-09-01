@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { mapApiCharacter, mapApiCharacters } from '../services/api/mapApiProject'
-import * as screenlyApi from '../services/screenlyApi'
+import * as projectApi from '../services/projectApi'
 import {
   ASSET_POLL_INTERVAL_MS,
   replaceItemInList,
@@ -48,7 +48,7 @@ export function useCharacterAssetWorkflow({
   const refreshCharacterList = useCallback(async () => {
     if (!projectId) return []
 
-    const response = await screenlyApi.getProjectCharacters(projectId)
+    const response = await projectApi.getProjectCharacters(projectId)
     const mapped = mapApiCharacters(response.characters ?? [])
 
     if (mountedRef.current) {
@@ -162,7 +162,7 @@ export function useCharacterAssetWorkflow({
       setBuildError(null)
 
       try {
-        const result = await screenlyApi.generateCharacter(characterId)
+        const result = await projectApi.generateCharacter(characterId)
 
         if (result?.character) {
           updateSingleCharacter(mapApiCharacter(result.character))
@@ -185,7 +185,7 @@ export function useCharacterAssetWorkflow({
     setIsBuildingAll(true)
 
     try {
-      await screenlyApi.generateAllCharacters(projectId)
+      await projectApi.generateAllCharacters(projectId)
       await refreshCharacterList()
       await pollCharacterList()
     } catch (err) {

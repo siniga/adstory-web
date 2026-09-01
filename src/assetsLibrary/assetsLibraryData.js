@@ -1,6 +1,5 @@
 export const ASSETS_TOP_STEPS = [
   { id: 'story', label: 'Story' },
-  { id: 'script', label: 'Script' },
   { id: 'screenplay', label: 'Screenplay' },
   { id: 'scenes', label: 'Scenes' },
   { id: 'shots', label: 'Shots' },

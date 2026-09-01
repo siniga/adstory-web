@@ -27,9 +27,9 @@ function sceneToForm(scene) {
 }
 
 function addPositionLabel(position) {
-  if (position === 'before') return 'Add Scene Before'
-  if (position === 'after') return 'Add Scene After'
-  return 'Add Scene'
+  if (position === 'before') return 'Add Sequence Before'
+  if (position === 'after') return 'Add Sequence After'
+  return 'Add Sequence'
 }
 
 export default function SceneEditModal({
@@ -76,7 +76,7 @@ export default function SceneEditModal({
 
   const title =
     mode === 'edit'
-      ? `Edit Scene ${scene?.scene_number ?? ''}`.trim()
+      ? `Edit Sequence ${scene?.scene_number ?? ''}`.trim()
       : addPositionLabel(addPosition)
 
   return createPortal(
@@ -177,7 +177,7 @@ export default function SceneEditModal({
             onClick={handleSubmit}
             disabled={saving}
           >
-            {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Add Scene'}
+            {saving ? 'Saving…' : mode === 'edit' ? 'Save Changes' : 'Add Sequence'}
           </button>
         </footer>
       </div>

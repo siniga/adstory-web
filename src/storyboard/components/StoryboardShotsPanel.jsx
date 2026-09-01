@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
-import StoryboardSceneImageProgressPanel from './StoryboardSceneImageProgressPanel'
 import StoryboardShotCard from './StoryboardShotCard'
-import StoryboardShotProgressPanel from './StoryboardShotProgressPanel'
+import { userErrorText } from '../../utils/userFriendlyErrors'
 import styles from '../ProjectStoryboard.module.css'
 
 function SceneChip({ icon, label }) {
@@ -31,32 +30,21 @@ export default function StoryboardShotsPanel({
   sceneLoading = false,
   generationActive = false,
   generationStarting = false,
-  generationCancelling = false,
   generationError,
-  progress,
   generatingShotId,
   addingShot = false,
   onGenerateShots,
-  onCancelGeneration,
   onSelectShot,
   onGenerateImage,
   onAddShot,
   onDuplicateShot,
   onDeleteShot,
   onMoveShot,
-  imageGenerationProgress,
-  imageGenerationStarting = false,
-  imageGenerationResuming = false,
-  imageGenerationActive = false,
-  imageGenerationComplete = false,
-  imageGenerationStalled = false,
-  imageGenerationSlowProgress = false,
   imageGenerationError,
+  imageGenerationActive = false,
   onGenerateAllImages,
-  onResumeImageGeneration,
-  onDismissSlowImageProgress,
-  onCancelImageGeneration,
-  imageGenerationCancelling = false,
+  onFullscreenShot,
+  onRegenerateShot,
 }) {
   const orderedShots = useMemo(() => sortShots(shots), [shots])
   const hasShots = orderedShots.length > 0
@@ -69,24 +57,6 @@ export default function StoryboardShotsPanel({
           <header className={styles.sceneHero}>
             <p className={styles.sceneHeroLabel}>Scene {scene.scene_number ?? '—'}</p>
             <h1 className={styles.sceneHeroTitle}>{scene.title || 'Untitled scene'}</h1>
-
-            {!sceneLoading && hasShots ? (
-              <StoryboardSceneImageProgressPanel
-                progress={imageGenerationProgress}
-                starting={imageGenerationStarting}
-                resuming={imageGenerationResuming}
-                generationActive={imageGenerationActive}
-                generationComplete={imageGenerationComplete}
-                stalled={imageGenerationStalled}
-                slowProgress={imageGenerationSlowProgress}
-                hasShots={hasShots}
-                onGenerateAll={onGenerateAllImages}
-                onResume={onResumeImageGeneration}
-                onKeepWaiting={onDismissSlowImageProgress}
-                onCancel={onCancelImageGeneration}
-                cancelling={imageGenerationCancelling}
-              />
-            ) : null}
 
             <div className={styles.sceneChips}>
               <SceneChip icon="📍" label={scene.location} />
@@ -102,22 +72,14 @@ export default function StoryboardShotsPanel({
 
         {generationError ? (
           <div className={styles.errorBox} role="alert">
-            {generationError}
+            {userErrorText(generationError)}
           </div>
         ) : null}
 
         {imageGenerationError ? (
           <div className={styles.errorBox} role="alert">
-            {imageGenerationError}
+            {userErrorText(imageGenerationError)}
           </div>
-        ) : null}
-
-        {generationActive && progress ? (
-          <StoryboardShotProgressPanel
-            progress={progress}
-            onCancel={onCancelGeneration}
-            cancelling={generationCancelling}
-          />
         ) : null}
 
         {sceneLoading ? (
@@ -151,14 +113,24 @@ export default function StoryboardShotsPanel({
           <>
             <div className={styles.shotsToolbar}>
               <h2 className={styles.shotsToolbarTitle}>Shots</h2>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={onAddShot}
-                disabled={addingShot || !scene}
-              >
-                {addingShot ? 'Adding…' : '+ Add Shot'}
-              </button>
+              <div className={styles.shotsToolbarActions}>
+                <button
+                  type="button"
+                  className={styles.secondaryBtn}
+                  onClick={onGenerateAllImages}
+                  disabled={imageGenerationActive || !scene}
+                >
+                  {imageGenerationActive ? 'Generating…' : 'Generate All Images'}
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryBtn}
+                  onClick={onAddShot}
+                  disabled={addingShot || !scene}
+                >
+                  {addingShot ? 'Adding…' : '+ Add Shot'}
+                </button>
+              </div>
             </div>
 
             <div className={styles.shotsList}>
@@ -179,6 +151,8 @@ export default function StoryboardShotsPanel({
                     onDelete={onDeleteShot}
                     onMoveUp={() => onMoveShot?.(shot, 'up')}
                     onMoveDown={() => onMoveShot?.(shot, 'down')}
+                    onFullscreen={onFullscreenShot}
+                    onRegenerate={onRegenerateShot}
                   />
                 )
               })}

@@ -173,10 +173,6 @@ export function getAccessibleCreationStep(project = {}) {
     return 'screenplay'
   }
 
-  if (project.script?.trim() || status.script === 'done') {
-    return 'script'
-  }
-
   return CREATION_STEPS[getResumeStepIndex(project)]?.id ?? 'story'
 }
 
@@ -216,8 +212,6 @@ export function canAccessCreationStep(stepId, project = {}) {
   switch (stepId) {
     case 'story':
       return true
-    case 'script':
-      return Boolean(project.script?.trim())
     case 'screenplay':
       return Boolean(project.screenplay?.trim())
     case 'sceneboard':
@@ -303,6 +297,12 @@ export function workspaceModeFromPathname(pathname) {
 
 export function isAssetsLibraryPath(pathname) {
   return /\/projects\/[^/]+\/(assets|characters)\/?$/.test(pathname)
+}
+
+export function isProjectWorkspacePath(pathname, projectId) {
+  if (!pathname || projectId == null || projectId === '') return false
+  const prefix = `/projects/${projectId}`
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
 }
 
 export function migrateLegacyHashRoute() {

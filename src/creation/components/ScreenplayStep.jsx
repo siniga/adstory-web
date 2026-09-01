@@ -3,16 +3,15 @@ import { getWorkspaceQuestion } from '../creationData'
 import { MIN_SCREENPLAY_LENGTH, validateScreenplay } from '../../services/adstoryApi'
 import CreationFullscreenReader from './CreationFullscreenReader'
 import readerStyles from './CreationFullscreenReader.module.css'
-import StepHeader from './StepHeader'
-import styles from './StepLayout.module.css'
+import WritingPageShell, { countWords } from './WritingPageShell'
+import writeStyles from './WritingPage.module.css'
 
 export default function ScreenplayStep({
   screenplay,
-  style,
   onActionChange,
-  onBackToScript,
-  onContinueToScenes,
+  onBackToStory,
   onSave,
+  onNext,
   generating,
   loading = false,
   saveStatus = 'idle',
@@ -46,111 +45,75 @@ export default function ScreenplayStep({
     }
 
     onActionChange({
-      label: 'Continue to Episodes',
-      generatingLabel: 'Generating Scenes...',
-      secondaryAction: {
-        label: 'Back to Script',
-        onClick: () => onBackToScript(value.trim()),
-        disabled: generating || isSaving,
-      },
+      label: 'Continue to sequences',
+      generatingLabel: generating ? 'Breaking your screenplay into sequences…' : 'Continue to sequences',
       disabled: Boolean(validationError) || generating || isSaving,
       onClick: () => {
         setTouched(true)
         if (validationError) {
           return
         }
-
-        onContinueToScenes({
-          screenplay: value.trim(),
-          style,
-        })
+        onNext?.({ screenplay: value.trim() })
+      },
+      secondaryAction: {
+        label: 'Back to Story',
+        onClick: () => onBackToStory(value.trim()),
+        disabled: generating || isSaving,
       },
     })
 
     return () => onActionChange(null)
-  }, [
-    generating,
-    isSaving,
-    onActionChange,
-    onBackToScript,
-    onContinueToScenes,
-    style,
-    validationError,
-    value,
-  ])
+  }, [generating, isSaving, onActionChange, onBackToStory, onNext, validationError, value])
 
   return (
-    <div className={styles.step}>
-      <StepHeader
-        stepNumber={3}
+    <>
+      <WritingPageShell
+        variant="screenplay"
+        kicker="Production draft"
         title="Screenplay"
-        question={getWorkspaceQuestion('screenplay')}
-        subtitle="How it plays on screen. Review formatting before breaking into scenes."
+        lead={getWorkspaceQuestion('screenplay')}
         onFullscreen={() => setFullscreenOpen(true)}
-      />
-      {loading ? (
-        <p className={styles.generationStatus} role="status">
-          Loading saved screenplay...
-        </p>
-      ) : null}
-      {generating ? (
-        <p className={styles.generationStatus} role="status">
-          Adstory is breaking your screenplay into production scenes...
-        </p>
-      ) : null}
-      <div className={styles.readingRoom}>
-        <div className={styles.toolbarRow}>
-          <button
-            type="button"
-            className={`${styles.secondaryBtnActive} ${styles.toolbarBtn}`}
-            onClick={handleSave}
-            disabled={generating || isSaving || Boolean(validationError)}
-          >
-            {isSaving ? 'Saving…' : 'Save'}
-          </button>
-          {saveStatusLabel ? (
-            <span className={styles.saveStatusInline} role="status">
-              {saveStatusLabel}
-            </span>
-          ) : null}
-        </div>
+        onSave={handleSave}
+        saveLabel={isSaving ? 'Saving…' : 'Save'}
+        saveDisabled={generating || isSaving || Boolean(validationError)}
+        loading={loading}
+        generating={generating}
+        generatingLabel="Breaking your screenplay into sequences…"
+        error={showValidationError ? validationError : saveError}
+        savedLabel={saveStatusLabel}
+        wordCount={countWords(value)}
+        charCount={value.trim().length}
+        minChars={MIN_SCREENPLAY_LENGTH}
+        textareaId="screenplay"
+      >
         <textarea
-          className={styles.textareaBlock}
+          id="screenplay"
+          className={writeStyles.editor}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onBlur={() => setTouched(true)}
           aria-label="Screenplay content"
           aria-invalid={showValidationError ? 'true' : undefined}
-          aria-describedby={showValidationError ? 'screenplay-validation-error' : undefined}
+          aria-describedby={
+            showValidationError || saveError ? 'screenplay-error' : undefined
+          }
         />
-      </div>
-      {showValidationError ? (
-        <p id="screenplay-validation-error" className={styles.fieldError} role="alert">
-          {validationError}
-        </p>
-      ) : saveError ? (
-        <p className={styles.fieldError} role="alert">
-          {saveError}
-        </p>
-      ) : (
-        <p className={styles.fieldHint}>
-          At least {MIN_SCREENPLAY_LENGTH} characters ({value.trim().length}/{MIN_SCREENPLAY_LENGTH})
-        </p>
-      )}
+      </WritingPageShell>
+
       <CreationFullscreenReader
         open={fullscreenOpen}
         onClose={() => setFullscreenOpen(false)}
-        eyebrow="Step 3 of 6"
+        variant="screenplay"
         title="Screenplay"
-        subtitle="Review the screenplay before breaking it into scenes."
+        subtitle="Review formatting before you break it into sequences."
       >
         <textarea
-          className={readerStyles.textareaBlock}
+          className={`${readerStyles.editor} ${readerStyles.screenplayEditor}`}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           aria-label="Screenplay content"
         />
       </CreationFullscreenReader>
-    </div>
+    </>
   )
 }

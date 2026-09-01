@@ -11,10 +11,10 @@ import {
   applyRegeneratedShotToProject,
   mapApiResponseToProjectState,
 } from '../services/api/mapApiProject'
-import * as screenlyApi from '../services/screenlyApi'
-import { generateScript as generateAdstoryScript, generateScreenplayFromScript, generateScenesFromScreenplay, generateShotsFromScenes, getFullAdstoryProject, getProjectCharacters, getProjectEnvironments, getProjectScenes, getProjectShots, saveProjectCharactersBulk, saveProjectCore, saveProjectEnvironmentsBulk, saveProjectScenesBulk, saveProjectShotsBulk, saveProjectScript, saveProjectScreenplay, saveProjectStory, validateScript, validateScreenplay, applyStoryboardSettingsToStudioShot, applyShotImageApiResponse, approveShotImage, deleteAdstoryProject, deleteShotImage, deriveShotFieldsFromImages, generateShotImage, mergeAdstoryShotUpdate, updateShotStoryboardSettings } from '../services/adstoryApi'
+import * as projectApi from '../services/projectApi'
+import { generateShotsFromScenes, getProjectCharacters, getProjectEnvironments, getProjectScenes, getProjectShots, mapAdstoryScenes, saveProjectCharactersBulk, saveProjectEnvironmentsBulk, saveProjectScenesBulk, saveProjectShotsBulk, validateScript, validateScreenplay, applyStoryboardSettingsToStudioShot, applyShotImageApiResponse, approveShotImage, deleteShotImage, deriveShotFieldsFromImages, generateShotImage, mergeAdstoryShotUpdate, updateShotStoryboardSettings } from '../services/adstoryApi'
 import { resolveMediaUrl } from '../utils/resolveMediaUrl'
-import { getVisualStyleLabel } from '../config/visualStyles'
+import { getVisualStyleLabel, normalizeVisualStyle } from '../config/visualStyles'
 import { formatUserFriendlyError } from '../utils/userFriendlyErrors'
 import { createEmptyProject } from './projectModel'
 import { loadProject, saveProject } from './projectStorage'
@@ -80,7 +80,7 @@ function syncActiveStudio(project) {
   }
 }
 
-export function useProjectState() {
+export function useProjectState({ syncToStore } = {}) {
   const [project, setProject] = useState(() => loadProject())
   const [generating, setGenerating] = useState(false)
   const [generatingSceneIds, setGeneratingSceneIds] = useState({})
@@ -95,12 +95,17 @@ export function useProjectState() {
 
   const clearError = useCallback(() => setError(null), [])
 
-  const persist = useCallback((next) => {
+  const persist = useCallback((next, { syncToStore: shouldSyncToStore = true } = {}) => {
     const saved = saveProject(next)
     setProject(saved)
     syncActiveStudio(saved)
+    if (shouldSyncToStore) {
+      syncToStore?.(saved)
+    }
     return saved
-  }, [])
+  }, [syncToStore])
+
+  const persistLocalOnly = useCallback((next) => persist(next, { syncToStore: false }), [persist])
 
   useEffect(() => {
     syncActiveStudio(project)
@@ -114,7 +119,7 @@ export function useProjectState() {
         cached.projectId != null && String(cached.projectId) === String(projectId)
           ? cached
           : createEmptyProject()
-      const apiProject = await getFullAdstoryProject(projectId)
+      const apiProject = await projectApi.getProject(projectId)
       const next = mapApiResponseToProjectState(baseProject, apiProject)
       persist({ ...next, projectId })
       return next
@@ -130,7 +135,7 @@ export function useProjectState() {
 
   const deleteProject = useCallback(
     async (projectId) => {
-      await deleteAdstoryProject(projectId)
+      await projectApi.deleteProject(projectId)
       if (String(project.projectId) === String(projectId)) {
         exitProject()
       }
@@ -152,8 +157,8 @@ export function useProjectState() {
       }
 
       const trimmedStory = story?.trim() ?? ''
-      const apiProject = await saveProjectStory(project.projectId, {
-        story_text: trimmedStory,
+      const apiProject = await projectApi.updateProject(project.projectId, {
+        story: trimmedStory,
         style: visualStyle,
         title: title ?? deriveProjectName(trimmedStory),
       })
@@ -185,7 +190,7 @@ export function useProjectState() {
       return current
     }
 
-    const apiProject = await getFullAdstoryProject(current.projectId)
+    const apiProject = await projectApi.getProject(current.projectId)
     const next = mapApiResponseToProjectState(current, apiProject)
     persist(next)
     return next
@@ -203,7 +208,7 @@ export function useProjectState() {
         throw new Error(validationError)
       }
 
-      const apiProject = await saveProjectScript(project.projectId, {
+      const apiProject = await projectApi.updateProject(project.projectId, {
         script: trimmedScript,
       })
 
@@ -238,7 +243,7 @@ export function useProjectState() {
         throw new Error(validationError)
       }
 
-      const apiProject = await saveProjectScreenplay(project.projectId, {
+      const apiProject = await projectApi.updateProject(project.projectId, {
         screenplay: trimmedScreenplay,
       })
 
@@ -432,14 +437,27 @@ export function useProjectState() {
 
   const updateVisualStyle = useCallback(
     async (visualStyle) => {
-      const next = { ...project, visualStyle }
+      const normalizedStyle = normalizeVisualStyle(visualStyle)
+      const next = { ...project, visualStyle: normalizedStyle }
       persist(next)
 
-      if (project.projectId) {
-        const apiProject = await saveProjectCore(project.projectId, {
-          style: getVisualStyleLabel(visualStyle),
+      if (!project.projectId) {
+        return
+      }
+
+      try {
+        const apiProject = await projectApi.updateProject(project.projectId, {
+          style: getVisualStyleLabel(normalizedStyle),
         })
-        persist(mapApiResponseToProjectState(next, apiProject))
+        persist(
+          mapApiResponseToProjectState(
+            { ...next, visualStyle: normalizedStyle },
+            apiProject
+          )
+        )
+      } catch (err) {
+        persist(next)
+        throw err
       }
     },
     [persist, project]
@@ -465,7 +483,7 @@ export function useProjectState() {
             throw new Error('Story is required')
           }
 
-          const result = await generateAdstoryScript({
+          const result = await projectApi.generateScript({
             story: trimmedStory,
             style: getVisualStyleLabel(source.visualStyle),
             project_id: source.projectId,
@@ -500,14 +518,13 @@ export function useProjectState() {
             throw new Error('Open a project before generating a screenplay.')
           }
 
-          const trimmedScript = source.script?.trim() ?? ''
-          const validationError = validateScript(trimmedScript)
-          if (validationError) {
-            throw new Error(validationError)
+          const trimmedStory = source.story?.trim() ?? ''
+          if (!trimmedStory) {
+            throw new Error('Story is required')
           }
 
-          const result = await generateScreenplayFromScript({
-            script: trimmedScript,
+          const result = await projectApi.generateScreenplay({
+            story: trimmedStory,
             style: getVisualStyleLabel(source.visualStyle),
             project_id: source.projectId,
           })
@@ -515,11 +532,11 @@ export function useProjectState() {
           const screenplay = result.screenplay
           let next = {
             ...source,
-            script: trimmedScript,
+            story: trimmedStory,
             screenplay,
             status: {
               ...source.status,
-              script: 'done',
+              story: 'ready',
               screenplay: 'done',
             },
           }
@@ -527,7 +544,7 @@ export function useProjectState() {
           if (result.project) {
             next = mapApiResponseToProjectState(next, result.project, {
               statusOverrides: {
-                script: 'done',
+                story: 'ready',
                 screenplay: 'done',
               },
             })
@@ -535,7 +552,7 @@ export function useProjectState() {
 
           persist(next)
           return next
-        } else if (stepId === 'scenes') {
+        } else if (stepId === 'scenes' || stepId === 'sceneboard') {
           if (!source.projectId) {
             throw new Error('Open a project before generating scenes.')
           }
@@ -546,13 +563,13 @@ export function useProjectState() {
             throw new Error(validationError)
           }
 
-          const result = await generateScenesFromScreenplay({
+          const result = await projectApi.generateScenes({
             screenplay: trimmedScreenplay,
             style: source.style ?? getVisualStyleLabel(source.visualStyle),
             project_id: source.projectId,
           })
 
-          const scenes = result.scenes ?? []
+          const scenes = mapAdstoryScenes(result.scenes ?? result.project?.scenes ?? [])
           let next = {
             ...source,
             screenplay: trimmedScreenplay,
@@ -561,6 +578,7 @@ export function useProjectState() {
               ...source.status,
               screenplay: 'done',
               scenes: 'done',
+              sceneboard: 'done',
             },
           }
 
@@ -569,9 +587,12 @@ export function useProjectState() {
               statusOverrides: {
                 screenplay: 'done',
                 scenes: 'done',
+                sceneboard: 'done',
               },
             })
-            next.scenes = scenes
+            if (scenes.length > 0) {
+              next.scenes = scenes
+            }
           }
 
           persist(next)
@@ -652,8 +673,8 @@ export function useProjectState() {
       setError(null)
 
       try {
-        await screenlyApi.generateSceneImages(sceneApiId)
-        const apiProject = await screenlyApi.getProject(project.projectId)
+        await projectApi.generateSceneImages(sceneApiId)
+        const apiProject = await projectApi.getProject(project.projectId)
         const next = mapApiResponseToProjectState(project, apiProject)
         persist(next)
         return next
@@ -683,7 +704,7 @@ export function useProjectState() {
       const withImmediateImage = applyRegeneratedShotToProject(project, shotApiId, shotPayload)
       persist(withImmediateImage)
 
-      const apiProject = await screenlyApi.getProject(project.projectId)
+      const apiProject = await projectApi.getProject(project.projectId)
       const next = mapApiResponseToProjectState(withImmediateImage, apiProject)
       persist(next)
       return next
@@ -700,7 +721,7 @@ export function useProjectState() {
       setSelectingShotCandidateId(String(shotApiId))
 
       try {
-        const updatedShot = await screenlyApi.selectShotCandidate(shotApiId, candidateId)
+        const updatedShot = await projectApi.selectShotCandidate(shotApiId, candidateId)
         return await applySelectedShotImage(shotApiId, updatedShot)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Shot version selection failed'
@@ -718,7 +739,7 @@ export function useProjectState() {
         throw new Error('Open a project before regenerating shot options.')
       }
 
-      const response = await screenlyApi.generateShotCandidates(shotApiId)
+      const response = await projectApi.generateShotCandidates(shotApiId)
       const candidates = extractShotCandidatesPayload(response)
 
       if (candidates.length === 0) {
@@ -774,7 +795,7 @@ export function useProjectState() {
       setRegeneratingShotApiId(String(shotApiId))
 
       try {
-        const response = await screenlyApi.generateShotCandidates(shotApiId)
+        const response = await projectApi.generateShotCandidates(shotApiId)
         const candidates = extractShotCandidatesPayload(response)
 
         if (candidates.length === 0) {
@@ -807,8 +828,8 @@ export function useProjectState() {
         throw new Error('Open a project before saving shot details.')
       }
 
-      await screenlyApi.updateShot(shotApiId, payload)
-      const apiProject = await screenlyApi.getProject(project.projectId)
+      await projectApi.updateShot(shotApiId, payload)
+      const apiProject = await projectApi.getProject(project.projectId)
       const next = mapApiResponseToProjectState(project, apiProject)
       persist(next)
       return next
@@ -847,8 +868,8 @@ export function useProjectState() {
 
       if (project.projectId && shotApiId) {
         try {
-          await screenlyApi.updateShot(shotApiId, { review_status: normalized })
-          const apiProject = await screenlyApi.getProject(project.projectId)
+          await projectApi.updateShot(shotApiId, { review_status: normalized })
+          const apiProject = await projectApi.getProject(project.projectId)
           next = mapApiResponseToProjectState(
             { ...next, shotReviewStatuses: nextReviewStatuses },
             apiProject
@@ -877,7 +898,7 @@ export function useProjectState() {
       setError(null)
 
       try {
-        const result = await screenlyApi.suggestCharacters(project.projectId, { force })
+        const result = await projectApi.suggestCharacters(project.projectId, { force })
         const characters = mapApiCharacters(result.characters)
         persist({ ...project, characters })
         return { characters, source: result.source }
@@ -897,8 +918,8 @@ export function useProjectState() {
     setError(null)
 
     try {
-      const apiProject = await screenlyApi.generateCharacters(project.projectId)
-      const next = mapApiResponseToProjectState(project, apiProject)
+      const result = await projectApi.generateCharacters({ project_id: project.projectId })
+      const next = mapApiResponseToProjectState(project, result.project ?? result)
       persist(next)
       return next.characters
     } catch (err) {
@@ -916,7 +937,7 @@ export function useProjectState() {
       setError(null)
 
       try {
-        const result = await screenlyApi.suggestEnvironments(project.projectId, { force })
+        const result = await projectApi.suggestEnvironments(project.projectId, { force })
         const environments = mapApiEnvironments(result.environments)
         persist({ ...project, environments })
         return { environments, source: result.source }
@@ -937,7 +958,7 @@ export function useProjectState() {
     setError(null)
 
     try {
-      const apiProject = await getFullAdstoryProject(current.projectId)
+      const apiProject = await projectApi.getProject(current.projectId)
       let next = mapApiResponseToProjectState(current, apiProject)
 
       if ((next.environments?.length ?? 0) === 0) {
@@ -995,7 +1016,7 @@ export function useProjectState() {
       setError(null)
 
       try {
-        const result = await screenlyApi.suggestObjects(project.projectId, { force })
+        const result = await projectApi.suggestObjects(project.projectId, { force })
         const objects = mapApiObjects(result.objects)
         persist({ ...project, objects })
         return { objects, source: result.source }
@@ -1015,7 +1036,7 @@ export function useProjectState() {
     setError(null)
 
     try {
-      const apiProject = await screenlyApi.getProject(project.projectId)
+      const apiProject = await projectApi.getProject(project.projectId)
       const next = mapApiResponseToProjectState(project, apiProject)
       persist(next)
       return next.objects
@@ -1045,7 +1066,7 @@ export function useProjectState() {
     setError(null)
 
     try {
-      const apiProject = await screenlyApi.getProject(project.projectId)
+      const apiProject = await projectApi.getProject(project.projectId)
       const next = mapApiResponseToProjectState(project, apiProject)
       persist(next)
       return next
@@ -1063,8 +1084,8 @@ export function useProjectState() {
     setError(null)
 
     try {
-      await screenlyApi.assignAssetsToShots(project.projectId, { force })
-      const apiProject = await screenlyApi.getProject(project.projectId)
+      await projectApi.assignAssetsToShots(project.projectId, { force })
+      const apiProject = await projectApi.getProject(project.projectId)
       const next = mapApiResponseToProjectState(project, apiProject)
       persist(next)
       return next
@@ -1230,6 +1251,7 @@ export function useProjectState() {
     runStep,
     resetProject,
     persist,
+    persistLocalOnly,
     selectProject,
     exitProject,
     deleteProject,

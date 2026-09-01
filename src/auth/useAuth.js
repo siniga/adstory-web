@@ -60,7 +60,7 @@ export function useAuth() {
     } catch (err) {
       const message = toUserError(err, err?.status, 'auth')
       setError(message)
-      return null
+      throw err
     }
   }, [])
 
@@ -74,7 +74,7 @@ export function useAuth() {
     } catch (err) {
       const message = toUserError(err, err?.status, 'auth')
       setError(message)
-      return null
+      throw err
     }
   }, [])
 

@@ -1,3 +1,10 @@
+import { sanitizeUserErrorMessage } from './sanitizeUserErrorMessage'
+
+const GENERIC_TITLE = 'Something went wrong'
+const GENERIC_MESSAGE = 'Something went wrong. Please try again.'
+const GENERATION_MESSAGE = 'We could not finish this step right now. Please try again in a moment.'
+const BUSY_MESSAGE = 'Our creative tools are busy right now. Please wait a minute and try again.'
+
 const VALIDATION_FIELD_LABELS = {
   story: 'story',
   script: 'script',
@@ -29,13 +36,36 @@ function cleanValidationMessage(message) {
   return message
 }
 
+function looksLikeSystemError(message) {
+  const lower = String(message ?? '').toLowerCase()
+  return (
+    /sqlstate/i.test(message) ||
+    lower.includes('gemini') ||
+    lower.includes('api key') ||
+    lower.includes('google ai') ||
+    lower.includes('pdoexception') ||
+    lower.includes('queryexception') ||
+    lower.includes('stack trace') ||
+    lower.includes('xampp') ||
+    lower.includes('artisan') ||
+    lower.includes('curl error') ||
+    lower.includes('illuminate\\') ||
+    lower.includes('connection: mysql') ||
+    lower.includes('insert into') ||
+    lower.includes('undefined array key') ||
+    lower.includes('vendor/') ||
+    lower.includes('billing') ||
+    lower.includes('prepayment credits')
+  )
+}
+
 export function formatUserFriendlyError(rawMessage) {
   const message = String(rawMessage ?? '').trim()
 
   if (!message) {
     return {
-      title: 'Something went wrong',
-      message: 'An unexpected error occurred. Please try again.',
+      title: GENERIC_TITLE,
+      message: GENERIC_MESSAGE,
     }
   }
 
@@ -45,20 +75,42 @@ export function formatUserFriendlyError(rawMessage) {
     lower.includes('high demand') ||
     lower.includes('try again later') ||
     lower.includes('overloaded') ||
-    lower.includes('resource exhausted')
+    lower.includes('resource exhausted') ||
+    lower.includes('quota') ||
+    lower.includes('credits are depleted')
   ) {
     return {
-      title: 'AI service is busy',
-      message:
-        'Our AI is handling unusually high demand right now. Please wait a minute and try again.',
+      title: 'Please try again shortly',
+      message: BUSY_MESSAGE,
     }
   }
 
-  if (lower.includes('gemini api') || lower.includes('gemini')) {
+  if (lower.includes('did not return an image')) {
     return {
-      title: 'Generation unavailable',
+      title: 'Image not ready',
+      message: 'We could not create this image. Please try again.',
+    }
+  }
+
+  if (lower.includes('blocked this image for safety') || lower.includes('for safety')) {
+    return {
+      title: 'Image could not be created',
       message:
-        'We could not complete this step because the AI service is temporarily unavailable. Please try again in a few minutes.',
+        'This image could not be created because of content guidelines. Try changing the scene and try again.',
+    }
+  }
+
+  if (lower.includes('api key') || lower.includes('not configured')) {
+    return {
+      title: GENERIC_TITLE,
+      message: GENERATION_MESSAGE,
+    }
+  }
+
+  if (lower.includes('gemini api error:') || lower.includes('gemini api request failed')) {
+    return {
+      title: GENERIC_TITLE,
+      message: GENERATION_MESSAGE,
     }
   }
 
@@ -66,12 +118,26 @@ export function formatUserFriendlyError(rawMessage) {
     lower.includes('failed to fetch') ||
     lower.includes('networkerror') ||
     lower.includes('network request failed') ||
-    lower.includes('load failed')
+    lower.includes('load failed') ||
+    lower.includes('cannot reach the api')
   ) {
     return {
       title: 'Connection problem',
-      message:
-        'We could not reach the server. Check your internet connection, confirm the API is running, then try again.',
+      message: 'We could not reach the server. Check your internet connection and try again.',
+    }
+  }
+
+  if (
+    lower.includes('sqlstate') ||
+    lower.includes('connection refused') ||
+    lower.includes('actively refused') ||
+    lower.includes('could not be made because') ||
+    lower.includes('connection: mysql') ||
+    lower.includes('no connection could be made')
+  ) {
+    return {
+      title: GENERIC_TITLE,
+      message: GENERIC_MESSAGE,
     }
   }
 
@@ -97,34 +163,50 @@ export function formatUserFriendlyError(rawMessage) {
     }
   }
 
-  if (lower.includes('failed to generate screenplay')) {
+  if (lower.includes('too long for a single screenplay') || lower.includes('divide it into')) {
     return {
-      title: 'Screenplay generation failed',
-      message: 'We could not format your script into a screenplay. Please try again in a moment.',
+      title: 'Story is too long',
+      message:
+        'Your story is too long for a single screenplay. We need to divide it into episodes.',
     }
   }
 
-  if (lower.includes('failed to generate scenes')) {
+  if (lower.includes('failed to generate screenplay')) {
     return {
-      title: 'Scene breakdown failed',
-      message: 'We could not break your screenplay into scenes. Please try again in a moment.',
+      title: 'Screenplay generation failed',
+      message: 'We could not generate your screenplay. Please try again in a moment.',
+    }
+  }
+
+  if (
+    lower.includes('failed to generate scenes') ||
+    lower.includes('failed to generate sequences') ||
+    lower.includes('did not return any sequences')
+  ) {
+    return {
+      title: 'Sequence breakdown failed',
+      message: 'We could not break your screenplay into sequences. Please try again in a moment.',
     }
   }
 
   if (
     lower.includes('failed to generate shots') ||
+    lower.includes('did not return any shots') ||
+    lower.includes('generate sequences before') ||
     lower.includes('at least one scene')
   ) {
     return {
-      title: 'Shot breakdown failed',
-      message: lower.includes('at least one scene')
-        ? 'Add at least one scene before generating shots.'
-        : 'We could not create your shot breakdown. Please try again in a moment.',
+      title: 'Storyboard shots failed',
+      message:
+        lower.includes('at least one scene') || lower.includes('generate sequences before')
+          ? 'Generate sequences before creating storyboard shots.'
+          : 'We could not break your sequences into shots. Please try again in a moment.',
     }
   }
 
   if (
     lower.includes('failed to extract characters') ||
+    lower.includes('did not return any characters') ||
     lower.includes('screenplay is missing')
   ) {
     return {
@@ -135,7 +217,10 @@ export function formatUserFriendlyError(rawMessage) {
     }
   }
 
-  if (lower.includes('failed to extract environments')) {
+  if (
+    lower.includes('failed to extract environments') ||
+    lower.includes('did not return any environments')
+  ) {
     return {
       title: 'Environment extraction failed',
       message: 'We could not detect locations from your screenplay. Please try again in a moment.',
@@ -212,13 +297,24 @@ export function formatUserFriendlyError(rawMessage) {
     }
   }
 
-  const cleaned = message
-    .replace(/^Gemini API request failed:\s*/i, '')
-    .replace(/^Error:\s*/i, '')
-    .trim()
-
-  return {
-    title: 'Something went wrong',
-    message: cleaned || 'An unexpected error occurred. Please try again.',
+  if (looksLikeSystemError(message)) {
+    return {
+      title: GENERIC_TITLE,
+      message: GENERATION_MESSAGE,
+    }
   }
+
+  const sanitized = sanitizeUserErrorMessage(message)
+  return {
+    title: GENERIC_TITLE,
+    message: sanitized || GENERIC_MESSAGE,
+  }
+}
+
+export function userErrorText(error) {
+  if (!error) return ''
+  if (typeof error === 'object' && typeof error.message === 'string') {
+    return formatUserFriendlyError(error.message).message
+  }
+  return formatUserFriendlyError(error).message
 }

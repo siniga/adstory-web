@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import * as screenlyApi from '../services/screenlyApi'
+import * as projectApi from '../services/projectApi'
 import {
   allIdentitiesCompleted,
   buildLiveCharactersFromStatus,
@@ -91,7 +91,7 @@ export function useCharacterIdentityGeneration({
   const fetchGenerationStatus = useCallback(async () => {
     if (!projectId) return null
 
-    const statusData = await screenlyApi.getCharacterGenerationStatus(projectId)
+    const statusData = await projectApi.getCharacterGenerationStatus(projectId)
     if (!isMountedRef.current) return null
 
     console.log('Generation status', statusData)
@@ -154,7 +154,7 @@ export function useCharacterIdentityGeneration({
       setQueueStallNotice(null)
 
       try {
-        const startResponse = await screenlyApi.generateCharacterIdentities(projectId, { force })
+        const startResponse = await projectApi.generateCharacterIdentities(projectId, { force })
         if (!isMountedRef.current) return
 
         hasStartedGenerationRef.current = true
@@ -252,7 +252,7 @@ export function useCharacterIdentityGeneration({
     const initialize = async () => {
       setIsInitializingGeneration(true)
       try {
-        const statusData = await screenlyApi.getCharacterGenerationStatus(projectId)
+        const statusData = await projectApi.getCharacterGenerationStatus(projectId)
         if (cancelled || !isMountedRef.current) return
 
         console.log('Generation status (initial)', statusData)

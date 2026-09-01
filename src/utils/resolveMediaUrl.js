@@ -14,7 +14,12 @@ export function resolveMediaUrl(url) {
     const parsed = new URL(trimmed, API_URL)
 
     if (parsed.pathname.startsWith('/storage/')) {
-      return `${API_URL}${parsed.pathname}${parsed.search}${parsed.hash}`
+      const relative = `${parsed.pathname}${parsed.search}${parsed.hash}`
+      // In dev, serve storage through the Vite proxy (same origin as the app).
+      if (import.meta.env.DEV) {
+        return relative
+      }
+      return `${API_URL}${relative}`
     }
   } catch {
     return trimmed
@@ -33,6 +38,12 @@ function appendCacheBust(url, cacheKey) {
 
 export function getShotImageCacheKey(shot) {
   if (!shot || typeof shot !== 'object') return null
+
+  const url = shot.image_url ?? shot.imageUrl
+  if (url != null && String(url).trim()) {
+    const fileName = String(url).split('/').pop()?.split('?')[0]
+    if (fileName) return fileName
+  }
 
   return shot.imageVersion ?? shot.imageUpdatedAt ?? shot.updated_at ?? shot.image_version ?? null
 }
@@ -121,18 +132,48 @@ export function getCharacterImageUrl(character) {
   return `${url}?v=${encodeURIComponent(String(cacheKey))}`
 }
 
+export function getCostumeImageUrl(character) {
+  if (!character) return null
+
+  const assets = Array.isArray(character.assets) ? character.assets : []
+  const costumeAsset =
+    assets.find((asset) => asset.asset_type === 'costume' && asset.image_url) ?? null
+
+  const url = resolveMediaUrl(character.costume_image_url ?? costumeAsset?.image_url)
+  if (!url) return null
+
+  const cacheKey =
+    costumeAsset?.updated_at ??
+    character.updatedAt ??
+    character.updated_at ??
+    Date.now()
+
+  return `${url}?v=${encodeURIComponent(String(cacheKey))}`
+}
+
 export function getEnvironmentImageUrl(environment) {
   if (!environment) return null
+
+  const assets = Array.isArray(environment.assets) ? environment.assets : []
+  const primaryAsset =
+    assets.find((asset) => asset.is_primary && asset.image_url) ??
+    assets.find((asset) => asset.image_url) ??
+    null
 
   const url = resolveMediaUrl(
     environment.imageUrl ??
       environment.image_url ??
       environment.previewImage ??
-      environment.reference_image_url
+      environment.reference_image_url ??
+      primaryAsset?.image_url
   )
   if (!url) return null
 
-  const cacheKey = environment.updatedAt ?? environment.updated_at ?? Date.now()
+  const cacheKey =
+    environment.updatedAt ??
+    environment.updated_at ??
+    primaryAsset?.updated_at ??
+    Date.now()
 
   return `${url}?v=${encodeURIComponent(String(cacheKey))}`
 }

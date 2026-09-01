@@ -7,6 +7,7 @@ import {
 } from '../../services/adstoryApi'
 import { formatUserFriendlyError } from '../../utils/userFriendlyErrors'
 import { logPollingStarted } from '../../creation/generationPolling'
+import { patchStoryboardShotsFromProgress, progressShotsNeedPatch } from '../storyboardShotImageMerge'
 import {
   areAllSceneShotImagesDone,
   areSceneShotImagesSettled,
@@ -44,6 +45,18 @@ function logStoryboardPollingSkipped(reason) {
 function getSceneShotsForCheck(sceneId, shotsList) {
   const sceneShots = filterShotsForScene(shotsList, sceneId)
   return sceneShots.length ? sceneShots : shotsList
+}
+
+function shotHasDisplayImage(shot) {
+  const url = shot?.image_url ?? shot?.imageUrl
+  return url != null && String(url).trim() !== ''
+}
+
+function sceneShotsNeedImageReload(shots = []) {
+  if (!shots.length) return false
+  return shots.some(
+    (shot) => !shotHasDisplayImage(shot) && getStoryboardShotImageStatus(shot) !== 'failed'
+  )
 }
 
 function logIgnoredStalePollResponse(requestSceneId, activeSceneId) {
@@ -201,7 +214,7 @@ export default function useStoryboardSceneImageGeneration({
       setProgress(nextProgress)
       onProgressChange?.(nextProgress)
 
-      if (raw.shots?.length) {
+      if (raw.shots?.length && progressShotsNeedPatch(shotsRef.current, raw.shots)) {
         onShotsPatch?.(raw.shots)
       }
 
@@ -265,6 +278,7 @@ export default function useStoryboardSceneImageGeneration({
       if (stale || isStalled) return { stopped: true }
 
       if (stopPollingIfShotsAlreadyDone(requestSceneId, result.progress)) {
+        await onComplete?.(requestSceneId)
         return { stopped: true }
       }
 
@@ -344,10 +358,17 @@ export default function useStoryboardSceneImageGeneration({
       logStoryboardPollingSkipped('scene shots already generated on open')
       setGenerationComplete(true)
       settledSceneIdsRef.current.add(sceneKey)
+      if (sceneShotsNeedImageReload(shotsForScene)) {
+        onComplete?.(requestSceneId)
+      }
       return undefined
     }
 
-    if (settledSceneIdsRef.current.has(sceneKey) && areSceneShotImagesSettled(shotsForScene)) {
+    if (
+      settledSceneIdsRef.current.has(sceneKey) &&
+      areSceneShotImagesSettled(shotsForScene) &&
+      !sceneShotsNeedImageReload(shotsForScene)
+    ) {
       setGenerationComplete(true)
       return undefined
     }
@@ -362,6 +383,9 @@ export default function useStoryboardSceneImageGeneration({
         if (areAllSceneShotImagesDone(shotsAfterOpen)) {
           setGenerationComplete(true)
           settledSceneIdsRef.current.add(sceneKey)
+          if (sceneShotsNeedImageReload(shotsAfterOpen)) {
+            onComplete?.(requestSceneId)
+          }
           return
         }
 
@@ -378,6 +402,7 @@ export default function useStoryboardSceneImageGeneration({
         } else if (isComplete) {
           setGenerationComplete(true)
           settledSceneIdsRef.current.add(sceneKey)
+          onComplete?.(requestSceneId)
         } else if (raw.stalled) {
           setStalled(true)
         }
@@ -394,6 +419,7 @@ export default function useStoryboardSceneImageGeneration({
     applyProgressPayload,
     beginPollingAfterStart,
     isStaleSceneResponse,
+    onComplete,
     projectId,
     sceneId,
     sceneLoading,

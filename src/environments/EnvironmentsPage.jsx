@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import * as screenlyApi from '../services/screenlyApi'
 import styles from '../assetsLibrary/AssetsLibraryPage.module.css'
 import {
-  allEnvironmentsGenerated,
   readEnvironmentGenerationStatus,
 } from '../assetsLibrary/assetGenerationStatus'
 import AssetWorkflowFooter from '../assetsLibrary/workflow/AssetWorkflowFooter'
@@ -29,12 +27,10 @@ export default function EnvironmentsPage({
   onStepClick,
   onReplaceEnvironments,
   onReplaceEnvironment,
-  onApproveAndContinue,
   onBackToCharacters,
   error = null,
 }) {
   const [actionError, setActionError] = useState(null)
-  const [continuing, setContinuing] = useState(false)
   const [rowError, setRowError] = useState(null)
 
   const handleReplaceEnvironments = useCallback(
@@ -58,10 +54,6 @@ export default function EnvironmentsPage({
   })
 
   const environmentCount = workflow.environments.length
-  const canContinue = allEnvironmentsGenerated(workflow.environments, {
-    generatingIds: workflow.generatingIds,
-    isBuildingAll: workflow.isBuildingAll,
-  })
 
   const handleGenerateOne = useCallback(
     async (environmentId) => {
@@ -87,23 +79,6 @@ export default function EnvironmentsPage({
       setRowError(message)
     }
   }, [workflow])
-
-  const handleContinue = useCallback(async () => {
-    if (!canContinue || !projectId) return
-
-    setContinuing(true)
-    setActionError(null)
-
-    try {
-      await screenlyApi.acceptAllEnvironments(projectId)
-      await onApproveAndContinue?.()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to continue'
-      setActionError(message)
-    } finally {
-      setContinuing(false)
-    }
-  }, [canContinue, onApproveAndContinue, projectId])
 
   const displayError = actionError || error || workflow.listError || workflow.buildError || rowError
 
@@ -141,10 +116,6 @@ export default function EnvironmentsPage({
         <AssetWorkflowFooter
           backLabel="Back"
           onBack={onBackToCharacters}
-          continueLabel="Continue"
-          onContinue={handleContinue}
-          continueDisabled={!canContinue}
-          continueLoading={continuing}
         />
       }
     >

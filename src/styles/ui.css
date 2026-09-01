@@ -1,0 +1,83 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --color-screenly-bg: #07080d;
+  --color-screenly-surface: #0d1017;
+  --color-screenly-elevated: #12151f;
+  --color-screenly-card: #151922;
+  --color-screenly-border: rgba(255, 255, 255, 0.08);
+  --color-screenly-border-strong: rgba(255, 255, 255, 0.14);
+  --color-screenly-muted: #9ca3af;
+  --color-screenly-dim: #6b7280;
+  --color-screenly-text: #f4f4f5;
+  --color-screenly-purple: #8b5cf6;
+  --color-screenly-indigo: #6366f1;
+  --color-screenly-violet: #a78bfa;
+
+  --shadow-screenly-card: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --shadow-screenly-glow: 0 0 24px rgba(139, 92, 246, 0.35);
+  --radius-screenly: 1.25rem;
+}
+
+@layer base {
+  .screenly-app-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(139, 92, 246, 0.35) transparent;
+  }
+
+  .screenly-app-scroll::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .screenly-app-scroll::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.35);
+    border-radius: 999px;
+  }
+}
+
+@layer utilities {
+  .screenly-gradient-btn {
+    background-image: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  }
+
+  .screenly-gradient-btn:hover {
+    background-image: linear-gradient(135deg, #9b6dff 0%, #7376f5 100%);
+  }
+
+  .screenly-active-nav {
+    background-image: linear-gradient(135deg, rgba(139, 92, 246, 0.95) 0%, rgba(99, 102, 241, 0.95) 100%);
+    box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.35), 0 8px 28px rgba(139, 92, 246, 0.35);
+  }
+
+  .screenly-glass {
+    background: rgba(18, 21, 31, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .screenly-hero-bg {
+    background:
+      radial-gradient(ellipse 80% 70% at 85% 50%, rgba(139, 92, 246, 0.28), transparent 55%),
+      radial-gradient(ellipse 50% 60% at 10% 80%, rgba(99, 102, 241, 0.18), transparent 50%),
+      linear-gradient(135deg, #1a1240 0%, #0f1428 45%, #121826 100%);
+  }
+
+  .screenly-card-hover {
+    transition:
+      transform 0.25s ease,
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
+  }
+
+  .screenly-card-hover:hover {
+    transform: translateY(-2px);
+    border-color: rgba(139, 92, 246, 0.45);
+    box-shadow:
+      0 0 0 1px rgba(139, 92, 246, 0.2),
+      0 12px 28px rgba(0, 0, 0, 0.4),
+      0 0 20px rgba(139, 92, 246, 0.12);
+  }
+}

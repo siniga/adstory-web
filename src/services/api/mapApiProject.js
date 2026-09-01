@@ -1,4 +1,5 @@
 import { normalizeVisualStyle } from '../../config/visualStyles'
+import { mapAdstoryEpisodes } from '../../creation/episodeGenerationStatus'
 import {
   mapAdstoryCharacters,
   mapAdstoryEnvironments,
@@ -540,7 +541,9 @@ export function mapApiResponseToProjectState(current, apiProject, options = {}) 
     ...current,
     projectId: apiProject.id,
     name: apiProject.title ?? current.name,
-    visualStyle: normalizeVisualStyle(apiProject.meta?.visual_style ?? current.visualStyle),
+    visualStyle: normalizeVisualStyle(
+      apiProject.meta?.visual_style ?? apiProject.visual_style ?? current.visualStyle
+    ),
     defaultEthnicity: apiProject.meta?.default_ethnicity ?? current.defaultEthnicity ?? null,
     story: apiProject.story ?? current.story ?? '',
     script: apiProject.script?.trim() ? apiProject.script : (current.script ?? ''),

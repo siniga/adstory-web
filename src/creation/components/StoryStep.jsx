@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BRAND } from '../../config/branding'
-import { VISUAL_STYLES } from '../../config/visualStyles'
+import { getVisualStyleLabel } from '../../config/visualStyles'
 import { getWorkspaceQuestion } from '../creationData'
 import { MIN_STORY_LENGTH, validateStory } from '../../services/adstoryApi'
 import CreationFullscreenReader from './CreationFullscreenReader'
 import readerStyles from './CreationFullscreenReader.module.css'
-import StepHeader from './StepHeader'
-import styles from './StepLayout.module.css'
+import WritingPageShell, { countWords } from './WritingPageShell'
+import writeStyles from './WritingPage.module.css'
 
 export default function StoryStep({
   story,
   visualStyle,
   onStoryChange,
-  onVisualStyleChange,
   onActionChange,
   onNext,
   generating,
@@ -21,20 +20,19 @@ export default function StoryStep({
   loading = false,
 }) {
   const [value, setValue] = useState(story)
-  const [styleValue, setStyleValue] = useState(visualStyle)
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
   const [touched, setTouched] = useState(false)
 
   const validationError = useMemo(() => validateStory(value), [value])
   const showValidationError = touched && validationError
+  const trimmedLength = value.trim().length
+  const styleLabel = getVisualStyleLabel(visualStyle)
+  const saveStatusLabel =
+    saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : null
 
   useEffect(() => {
     setValue(story)
   }, [story])
-
-  useEffect(() => {
-    setStyleValue(visualStyle)
-  }, [visualStyle])
 
   useEffect(() => {
     if (!onActionChange) {
@@ -42,8 +40,8 @@ export default function StoryStep({
     }
 
     onActionChange({
-      label: 'Generate Script',
-      generatingLabel: generating ? 'Saving story and generating script…' : 'Generate Script',
+      label: 'Generate',
+      generatingLabel: generating ? 'Generating your project…' : 'Generate',
       disabled: Boolean(validationError) || generating,
       onClick: () => {
         setTouched(true)
@@ -63,102 +61,53 @@ export default function StoryStep({
     return () => onActionChange(null)
   }, [generating, onActionChange, onNext, onStoryChange, validationError, value])
 
-  const handleStyleSelect = (nextStyle) => {
-    setStyleValue(nextStyle)
-    onVisualStyleChange(nextStyle)
-  }
-
-  const styleLabel =
-    VISUAL_STYLES.find((style) => style.value === styleValue)?.label ?? styleValue
-
-  const saveStatusLabel =
-    saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : null
-
   return (
-    <div className={styles.step}>
-      <StepHeader
-        stepNumber={1}
+    <>
+      <WritingPageShell
+        variant="story"
+        kicker="Manuscript"
         title="Story"
-        question={getWorkspaceQuestion('story')}
-        subtitle="Start with the spark. A few sentences is enough — Adstory will expand it into a full script."
+        lead={getWorkspaceQuestion('story')}
+        chip={styleLabel}
         onFullscreen={() => setFullscreenOpen(true)}
-      />
-      {loading ? (
-        <p className={styles.generationStatus} role="status">
-          Loading saved story...
-        </p>
-      ) : null}
-      {saveStatusLabel ? (
-        <p className={styles.saveStatus} role="status">
-          {saveStatusLabel}
-        </p>
-      ) : null}
-      <div className={styles.field}>
-        <label className={styles.fieldLabel}>Visual Style</label>
-        <p className={styles.fieldHint}>Choose how your storyboard images should look.</p>
-        <div className={styles.styleTileGrid} role="listbox" aria-label="Storyboard style">
-          {VISUAL_STYLES.map((style) => (
-            <button
-              key={style.value}
-              type="button"
-              role="option"
-              aria-selected={styleValue === style.value}
-              className={`${styles.styleTile} ${styleValue === style.value ? styles.styleTileSelected : ''}`}
-              onClick={() => handleStyleSelect(style.value)}
-            >
-              <div
-                className={styles.styleTileSwatch}
-                style={{ background: style.gradient }}
-                aria-hidden="true"
-              />
-              <span className={styles.styleTileLabel}>{style.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className={styles.readingRoom}>
+        loading={loading}
+        error={showValidationError ? validationError : saveError}
+        savedLabel={saveStatusLabel}
+        wordCount={countWords(value)}
+        charCount={trimmedLength}
+        minChars={MIN_STORY_LENGTH}
+        textareaId="story"
+      >
         <textarea
-          className={styles.textareaLarge}
+          id="story"
+          className={writeStyles.editor}
           value={value}
           onChange={(event) => setValue(event.target.value)}
           onBlur={() => setTouched(true)}
-          placeholder="Write your story idea…"
+          placeholder="Write the story you want to see on screen…"
           aria-label="Story idea"
           aria-invalid={showValidationError ? 'true' : undefined}
-          aria-describedby={showValidationError ? 'story-validation-error' : undefined}
+          aria-describedby={
+            showValidationError || saveError ? 'story-error' : undefined
+          }
         />
-      </div>
-      {showValidationError ? (
-        <p id="story-validation-error" className={styles.fieldError} role="alert">
-          {validationError}
-        </p>
-      ) : saveError ? (
-        <p className={styles.fieldError} role="alert">
-          {saveError}
-        </p>
-      ) : (
-        <p className={styles.fieldHint}>
-          At least {MIN_STORY_LENGTH} characters ({value.trim().length}/{MIN_STORY_LENGTH})
-        </p>
-      )}
+      </WritingPageShell>
+
       <CreationFullscreenReader
         open={fullscreenOpen}
         onClose={() => setFullscreenOpen(false)}
-        eyebrow="Step 1"
+        variant="story"
         title="Story"
         subtitle={getWorkspaceQuestion('story')}
       >
-        <p className={readerStyles.metaLine}>
-          Storyboard style: <strong>{styleLabel}</strong>
-        </p>
         <textarea
-          className={readerStyles.textareaLarge}
+          className={`${readerStyles.editor} ${readerStyles.storyEditor}`}
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="Write your story idea…"
+          placeholder="Write the story you want to see on screen…"
           aria-label="Story idea"
         />
       </CreationFullscreenReader>
-    </div>
+    </>
   )
 }

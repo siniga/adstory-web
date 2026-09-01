@@ -14,8 +14,8 @@ export default function TopBar({ onEnterFocusMode, onBackToStory }) {
             type="button"
             className={styles.backBtn}
             onClick={onBackToStory}
-            aria-label="Back to story area"
-            title="Back to story area"
+            aria-label="Back to project"
+            title="Back to project"
           >
             <span aria-hidden="true">←</span>
           </button>

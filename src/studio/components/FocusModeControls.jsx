@@ -9,7 +9,7 @@ export default function FocusModeControls({
   return (
     <div className={styles.controls} role="toolbar" aria-label="Focus mode controls">
       {onBackToStory ? (
-        <button type="button" className={styles.backBtn} onClick={onBackToStory} title="Back to story area">
+        <button type="button" className={styles.backBtn} onClick={onBackToStory} title="Back to project">
           ← Story
         </button>
       ) : null}

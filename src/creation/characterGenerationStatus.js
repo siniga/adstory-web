@@ -334,37 +334,72 @@ export function areCharactersGenerationSettled(characters = []) {
 export function shouldStopCharacterPolling(progress, characters = []) {
   const normalized = normalizeCharacterList(characters)
 
-  if (normalized.length > 0 && areCharactersGenerationSettled(normalized)) {
-    if (allCharactersPortraitComplete(normalized)) {
-      return true
-    }
+  if (normalized.length > 0 && allCharactersPortraitComplete(normalized)) {
+    return true
   }
 
   if (progress && isGenerationTerminal(progress.status)) {
-    return true
+    return allCharactersPortraitComplete(normalized) || normalized.length === 0
   }
 
   const total = progress?.total ?? 0
   const completed = progress?.completed ?? 0
   const failed = progress?.failed ?? 0
 
-  if (total > 0 && completed + failed >= total) {
+  if (
+    total > 0 &&
+    completed + failed >= total &&
+    (normalized.length === 0 || allCharactersPortraitComplete(normalized))
+  ) {
     return true
   }
 
-  if (normalized.length > 0 && allCharactersPortraitComplete(normalized)) {
-    return true
-  }
+  return false
+}
 
-  return hasProjectCharacters(normalized) && progress?.status === PROJECT_GEN_STATUS.COMPLETED
+export function mergeCharacterProgressWithList(progress, characters = []) {
+  if (!progress) return null
+
+  const normalized = normalizeCharacterList(characters)
+  const total = Math.max(progress.total ?? 0, normalized.length)
+  const completedFromList = normalized.filter(
+    (character) =>
+      characterHasPortrait(character) ||
+      character.image_status === CHARACTER_IMAGE_STATUS.COMPLETED
+  ).length
+  const failedFromList = normalized.filter(
+    (character) => character.image_status === CHARACTER_IMAGE_STATUS.FAILED
+  ).length
+
+  const completed = Math.max(progress.completed ?? 0, completedFromList)
+  const failed = Math.max(progress.failed ?? 0, failedFromList)
+  const remaining = Math.max(0, total - completed - failed)
+
+  return {
+    ...progress,
+    total,
+    completed,
+    failed,
+    remaining,
+    progress_percent:
+      total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : progress.progress_percent,
+  }
 }
 
 export function normalizeCharacterGenerationProgress(progress, characters = []) {
   const normalized = normalizeCharacterList(characters)
-  const isComplete =
-    hasProjectCharacters(normalized) &&
-    (progress?.status === PROJECT_GEN_STATUS.COMPLETED ||
-      allCharactersPortraitComplete(normalized))
+  const merged = mergeCharacterProgressWithList(progress, normalized)
+  const portraitsDone = allCharactersPortraitComplete(normalized)
+  const isComplete = hasProjectCharacters(normalized) && portraitsDone
 
-  return normalizeGenerationProgress(progress, { isComplete })
+  const adjustedProgress =
+    merged && !portraitsDone && isGenerationTerminal(merged.status)
+      ? {
+          ...merged,
+          status: PROJECT_GEN_STATUS.RUNNING,
+          progress_percent: undefined,
+        }
+      : merged
+
+  return normalizeGenerationProgress(adjustedProgress, { isComplete })
 }

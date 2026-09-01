@@ -1,0 +1,241 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10003;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 6, 12, 0.78);
+  backdrop-filter: blur(10px);
+}
+
+.panel {
+  width: min(520px, 100%);
+  padding: 28px 28px 24px;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(124, 58, 237, 0.16), transparent 60%),
+    #121216;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: #f4f4f5;
+}
+
+.subtitle {
+  margin: 0 0 22px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+
+.meter {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.meterFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  transition: width 0.35s ease;
+}
+
+.meterMeta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 22px;
+}
+
+.live {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f4f4f5;
+}
+
+.percent {
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #a78bfa;
+}
+
+.phases {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.phase {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 4px;
+  color: #71717a;
+  font-size: 13px;
+}
+
+.phaseCurrent {
+  color: #f4f4f5;
+}
+
+.phaseDone {
+  color: #c4b5fd;
+}
+
+.phaseMark {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+}
+
+.phaseCurrent .phaseMark {
+  border-color: rgba(167, 139, 250, 0.55);
+  background: rgba(124, 58, 237, 0.22);
+  color: #ddd6fe;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.phaseDone .phaseMark {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: rgba(124, 58, 237, 0.16);
+  color: #c4b5fd;
+}
+
+.phaseTitle {
+  font-weight: 600;
+}
+
+.phaseCount {
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #a1a1aa;
+}
+
+.phaseCurrent .phaseCount {
+  color: #c4b5fd;
+}
+
+.phaseFailed {
+  color: #fda4af;
+}
+
+.phaseFailed .phaseMark {
+  border-color: rgba(244, 63, 94, 0.45);
+  background: rgba(244, 63, 94, 0.16);
+  color: #fecdd3;
+  animation: none;
+}
+
+.failBox {
+  margin-top: 18px;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.failTitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #fecdd3;
+}
+
+.failMessage {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e4e4e7;
+}
+
+.choiceBox {
+  margin-top: 18px;
+  padding: 14px 14px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  background: rgba(124, 58, 237, 0.1);
+}
+
+.choiceTitle {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #e9d5ff;
+}
+
+.choiceMessage {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e4e4e7;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.secondaryBtn,
+.primaryBtn {
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.secondaryBtn {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #d4d4d8;
+}
+
+.primaryBtn {
+  border: 0;
+  background: #7c3aed;
+  color: #fafafa;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(167, 139, 250, 0.12);
+  }
+}

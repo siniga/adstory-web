@@ -7,10 +7,10 @@ import {
 } from '../../assetsLibrary/characterReferences'
 import { buildCharacterSheetGalleryItems } from '../../assetsLibrary/mapAssetsLibraryData'
 import {
-  generateCharacterImage,
   generateCharacterReferenceImage,
   mergeAdstoryCharacterUpdate,
 } from '../../services/adstoryApi'
+import { generateCharacterImage } from '../../services/projectApi'
 import { getCharacterImageUrl } from '../../utils/resolveMediaUrl'
 import { formatUserFriendlyError } from '../../utils/userFriendlyErrors'
 import CreationFullscreenReader from './CreationFullscreenReader'
@@ -106,6 +106,8 @@ export default function CharacterSheetModal({
         character: current,
         style,
         project_id: projectId,
+        character_id: current.db_id ?? current.id,
+        force: Boolean(getCharacterImageUrl(current)),
       })
 
       applyCharacterUpdate(mergeAdstoryCharacterUpdate(current, result))

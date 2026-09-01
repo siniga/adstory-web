@@ -83,6 +83,36 @@ body.studio-app textarea {
   font-family: inherit;
 }
 
+body.studio-app button:not(:disabled),
+body.studio-app a[href],
+body.studio-app [role='button']:not([aria-disabled='true']),
+body.studio-app [role='menuitem'],
+body.studio-app [role='option'],
+body.studio-app [role='tab'],
+body.studio-app [role='switch'],
+body.studio-app [role='checkbox'],
+body.studio-app [role='radio'],
+body.studio-app [role='link'],
+body.studio-app summary,
+body.studio-app label[for],
+body.studio-app select:not(:disabled),
+body.studio-app input[type='button']:not(:disabled),
+body.studio-app input[type='submit']:not(:disabled),
+body.studio-app input[type='reset']:not(:disabled),
+body.studio-app input[type='checkbox']:not(:disabled),
+body.studio-app input[type='radio']:not(:disabled),
+body.studio-app input[type='file']:not(:disabled),
+body.studio-app input[type='image']:not(:disabled) {
+  cursor: pointer;
+}
+
+body.studio-app button:disabled,
+body.studio-app select:disabled,
+body.studio-app input:disabled,
+body.studio-app [aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
 body.studio-app ::-webkit-scrollbar {
   width: 4px;
   height: 4px;

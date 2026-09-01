@@ -1,4 +1,4 @@
-import ScreenlyCreationFlow from '../creation/ScreenlyCreationFlow'
+import CreationFlow from '../creation/CreationFlow'
 import styles from './StoryArea.module.css'
 
 export default function StoryArea({
@@ -10,7 +10,7 @@ export default function StoryArea({
 }) {
   return (
     <div className={styles.root}>
-      <ScreenlyCreationFlow
+      <CreationFlow
         projectState={projectState}
         projectStore={projectStore}
         currentStep={currentStep}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { mapApiEnvironment, mapApiEnvironments } from '../services/api/mapApiProject'
-import * as screenlyApi from '../services/screenlyApi'
+import * as projectApi from '../services/projectApi'
 
 const BUILD_DELAY_MS = 300
 
@@ -49,7 +49,7 @@ export function useEnvironmentSequentialBuild({
     setActiveEnvironmentId(null)
 
     try {
-      const { done: isDone, data } = await screenlyApi.buildNextEnvironment(projectId)
+      const { done: isDone, data } = await projectApi.buildNextEnvironment(projectId)
       if (!mountedRef.current) return
 
       if (isDone) {
@@ -111,7 +111,7 @@ export function useEnvironmentSequentialBuild({
       setDone(false)
 
       try {
-        const { data } = await screenlyApi.startEnvironmentBuild(projectId)
+        const { data } = await projectApi.startEnvironmentBuild(projectId)
         if (!mountedRef.current) return
 
         setHasSession(true)
@@ -204,7 +204,7 @@ export function useEnvironmentSequentialBuild({
     setError(null)
 
     try {
-      const { done: isDone, data } = await screenlyApi.buildNextEnvironment(projectId)
+      const { done: isDone, data } = await projectApi.buildNextEnvironment(projectId)
       if (!mountedRef.current) return null
 
       if (isDone) {
